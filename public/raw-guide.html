@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading Guide...</title>
+  <style>
+    body {
+      background: #fbeee0;
+      color: #1c1814;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .loader {
+      font-family: monospace;
+      font-size: 14px;
+      color: #8a7d70;
+    }
+  </style>
+</head>
+<body>
+  <div class="loader" id="status">Loading guide content...</div>
+
+  <script type="text/javascript">
+    const GLOSSARY = [
+      'Continuous Discovery',
+      'continuous discovery',
+      'Opportunity Solution Tree',
+      'opportunity solution tree',
+      'Opportunity Solution Trees',
+      'opportunity solution trees',
+      'Product Manager',
+      'Product Managers',
+      'product manager',
+      'product managers',
+      'Product Management',
+      'product management',
+      'Clay',
+      'clay',
+      'Output',
+      'Outputs',
+      'output',
+      'outputs',
+      'Outcome',
+      'Outcomes',
+      'outcome',
+      'outcomes',
+      'Playbook',
+      'Playbooks',
+      'playbook',
+      'playbooks'
+    ];
+
+    function protectGlossaryNodes(docObj) {
+      const walk = docObj.createTreeWalker(
+        docObj.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: function(node) {
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            const tag = parent.tagName.toUpperCase();
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'CODE') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            if (parent.classList.contains('notranslate') || parent.getAttribute('translate') === 'no') {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+
+      const textNodes = [];
+      let node;
+      while (node = walk.nextNode()) {
+        textNodes.push(node);
+      }
+
+      const sortedGlossary = [...GLOSSARY].sort((a, b) => b.length - a.length);
+
+      for (let idx = 0; idx < textNodes.length; idx++) {
+        const n = textNodes[idx];
+        const text = n.nodeValue || "";
+        let foundTerm = null;
+        let foundIndex = -1;
+
+        for (const term of sortedGlossary) {
+          const escaped = term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp('\\b' + escaped + '\\b');
+          const match = text.match(regex);
+          if (match && match.index !== undefined) {
+            foundTerm = term;
+            foundIndex = match.index;
+            break;
+          }
+        }
+
+        if (foundTerm) {
+          const parent = n.parentNode;
+          if (!parent) continue;
+
+          const beforeText = text.substring(0, foundIndex);
+          const afterText = text.substring(foundIndex + foundTerm.length);
+
+          const beforeNode = docObj.createTextNode(beforeText);
+          const spanNode = docObj.createElement('span');
+          spanNode.className = 'notranslate';
+          spanNode.setAttribute('translate', 'no');
+          spanNode.textContent = foundTerm;
+          const afterNode = docObj.createTextNode(afterText);
+
+          parent.insertBefore(beforeNode, n);
+          parent.insertBefore(spanNode, n);
+          parent.insertBefore(afterNode, n);
+          parent.removeChild(n);
+
+          // Push the remaining text node to be checked as well
+          textNodes.push(afterNode);
+        }
+      }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    const lang = urlParams.get('lang') || 'en';
+    const statusEl = document.getElementById('status');
+
+    // Prevent double-render if both REST API and postMessage provide HTML
+    var htmlRendered = false;
+
+    // Shared render function — called from either the REST API path (public
+    // guides) or the INJECT_HTML postMessage path (private/admin-only guides
+    // whose unauthenticated REST fetch is denied by Firestore rules).
+    function renderHtml(html, htmlLang) {
+      if (htmlRendered || !html) return;
+      htmlRendered = true;
+
+      var parser = new DOMParser();
+      var docObj = parser.parseFromString(html, 'text/html');
+
+      if (htmlLang === 'fr') {
+        protectGlossaryNodes(docObj);
+      }
+
+      // Auto-translate if no pre-translated French version was supplied
+      if (htmlLang === 'fr' && html) {
+        var needsAutoTranslate = !html.includes('google_translate_element');
+        if (needsAutoTranslate) {
+          var translateStyles = '<style>.goog-te-banner-frame,.goog-te-banner,.goog-tooltip,.goog-te-balloon,.goog-te-gadget-icon{display:none!important}body{top:0!important}.goog-logo-link,.goog-te-gadget,#google_translate_element,iframe.skiptranslate{display:none!important}</style>';
+          var translateScript = '<div id="google_translate_element"></div>' +
+            '<script type="text/javascript">function googleTranslateElementInit(){new google.translate.TranslateElement({pageLanguage:"en",includedLanguages:"fr",autoDisplay:false},"google_translate_element");var t=setInterval(function(){var s=document.querySelector("select.goog-te-combo");if(s){s.value="fr";s.dispatchEvent(new Event("change"));clearInterval(t)}},100)}<\/script>' +
+            '<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"><\/script>';
+
+          var headEl = docObj.querySelector('head') || docObj.documentElement;
+          var styleDiv = docObj.createElement('div');
+          styleDiv.innerHTML = translateStyles;
+          headEl.appendChild(styleDiv.firstElementChild);
+
+          var body = docObj.body || docObj.documentElement;
+          var scriptContainer = docObj.createElement('div');
+          scriptContainer.innerHTML = translateScript;
+          while (scriptContainer.firstChild) body.appendChild(scriptContainer.firstChild);
+        }
+      }
+
+      // Override window.print so Save & Export always routes through the parent's
+      // auth gate regardless of which button element calls it.
+      var scriptEl = docObj.createElement('script');
+      scriptEl.type = 'text/javascript';
+      scriptEl.textContent = '(function(){var n=window.print.bind(window);window.print=function(){window.parent.postMessage({type:"EXPORT_PDF"},"*")};window.addEventListener("message",function(e){if(!e.data)return;if(e.data.type==="DO_NATIVE_PRINT")n();if(e.data.type==="SCROLL_TO_SECTION"&&e.data.id){var el=document.getElementById(e.data.id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}})})();';
+      var head = docObj.querySelector('head') || docObj.documentElement;
+      head.insertBefore(scriptEl, head.firstChild);
+
+      document.open();
+      document.write('<!DOCTYPE html>\n' + docObj.documentElement.outerHTML);
+      document.close();
+    }
+
+    // Listen for INJECT_HTML from the parent GuideViewer (sent after its own
+    // authenticated Firestore read). This is the only path that works for private
+    // guides whose REST API fetch below is rejected with 403 by Firestore rules.
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'INJECT_HTML') {
+        renderHtml(e.data.html, e.data.lang || lang);
+      }
+    });
+
+    if (!id) {
+      statusEl.textContent = 'Error: Guide ID is missing.';
+    } else {
+      var url = 'https://firestore.googleapis.com/v1/projects/yezi-hub/databases/(default)/documents/guides/' + id;
+      fetch(url)
+        .then(function(res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function(data) {
+          var fields = data.fields;
+          var htmlContent   = (fields.htmlContent   && fields.htmlContent.stringValue)   || '';
+          var htmlContentFr = (fields.htmlContent_fr && fields.htmlContent_fr.stringValue) || '';
+          // Large guides store their HTML in Storage instead of inline —
+          // htmlContent/_fr is then empty and this URL must be fetched.
+          var htmlUrl   = (fields.htmlUrl   && fields.htmlUrl.stringValue)   || '';
+          var htmlUrlFr = (fields.htmlUrl_fr && fields.htmlUrl_fr.stringValue) || '';
+
+          function resolveContent(inline, url) {
+            if (inline) return Promise.resolve(inline);
+            if (url) return fetch(url).then(function(r) { return r.ok ? r.text() : ''; }).catch(function() { return ''; });
+            return Promise.resolve('');
+          }
+
+          var useFr = lang === 'fr' && (htmlContentFr || htmlUrlFr);
+          var contentPromise = useFr
+            ? resolveContent(htmlContentFr, htmlUrlFr)
+            : resolveContent(htmlContent, htmlUrl);
+
+          return contentPromise.then(function(html) { renderHtml(html, lang); });
+        })
+        .catch(function() {
+          // REST API failed (likely 403 for a private/unpublished guide).
+          // Ask the parent GuideViewer to push the HTML via postMessage — it has
+          // an authenticated Firestore session that can read private guides.
+          window.parent.postMessage({ type: 'REQUEST_HTML' }, '*');
+          // Show an error only if neither path delivers HTML within 5 seconds.
+          setTimeout(function() {
+            if (!htmlRendered) statusEl.textContent = 'Error loading guide. Please try refreshing.';
+          }, 5000);
+        });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Readers also get real Firebase Auth sessions (magic link, for liking/
+    // saving guides) — so "signed in" no longer implies "admin". Every
+    // admin-only rule below must check this instead of bare request.auth != null.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'yezi.lilyz@gmail.com';
+    }
+
+    // Guides: public can read published; admin can read everything (drafts/private too).
+    match /guides/{guideId} {
+      allow read: if resource.data.published == true || isAdmin();
+      // Any signed-in reader may toggle ONLY likeCount on a guide — nothing else.
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount']);
+      allow write: if isAdmin();
+    }
+
+    // Sections: public read (needed for public hub); admin write
+    match /sections/{sectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Site meta: public read (title/tagline/subtitle); admin write
+    match /meta/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Link lists: public read; admin write
+    match /link_lists/{listId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Subscribers: anyone can sign up (create); only admin can read/manage the list
+    match /subscribers/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Library: each reader's own liked/saved guides. Doc id convention is
+    // `{uid}_{guideId}` so there's at most one entry per reader per guide;
+    // rules don't enforce the id format but scope every op to the owning uid.
+    match /library/{entryId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}

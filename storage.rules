@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Readers also get real Firebase Auth sessions (magic link, for liking/
+    // saving guides) — so "signed in" does not imply "admin". Must match
+    // firestore.rules' isAdmin().
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'yezi.lilyz@gmail.com';
+    }
+
+    // Public guide HTML files (large guides that don't fit inline in Firestore)
+    match /guides/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Pre-generated TTS audio cache — public read, written only by Cloud Functions
+    // (Cloud Functions use Admin SDK which bypasses these rules entirely)
+    match /audio/{guideId}/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

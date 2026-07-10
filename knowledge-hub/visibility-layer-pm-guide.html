@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Visibility Layer — A Startup PM Delivery Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400..900;1,400..900&family=Inter:wght@400..700&family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#fbeee0;        /* page bg */
+    --cream-deep:#f7e3cf;   /* eyebrow band / fills */
+    --paper:#ffffff;        /* cards */
+    --ink:#1c1814;          /* near-black */
+    --ink-soft:#4a423a;
+    --muted:#8a7d70;
+    --faint:#b3a596;
+    --line:#1c1814;         /* chunky black outline */
+    --orange:#e8943a;       /* primary accent */
+    --orange-deep:#cf7d28;
+    --orange-soft:#fbe6cf;
+    --green:#4f9d6b;
+    --amber:#e0a93a;
+    --red:#d96a4a;
+    --pm:#3f7fd6;
+    --eng:#9166c9;
+    --shared:#4f9d6b;
+    --shadow:6px 6px 0 var(--ink);
+    --shadow-sm:3px 3px 0 var(--ink);
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.6;
+    -webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{margin:0;line-height:1.08}
+
+  .display{font-family:"Anton",sans-serif;font-weight:400;letter-spacing:.005em;text-transform:none}
+  .script{font-family:"Caveat",cursive}
+  .eyebrow{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;
+    text-transform:uppercase;letter-spacing:.04em;font-size:12px}
+
+  /* ---------- shell ---------- */
+  .shell{display:grid;grid-template-columns:264px 1fr;min-height:100vh}
+  nav.rail{position:sticky;top:0;height:100vh;padding:26px 20px;overflow-y:auto;
+    background:var(--cream-deep);border-right:2px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:9px;margin-bottom:2px}
+  .brand .fire{width:34px;height:34px;border:2px solid var(--line);border-radius:9px;background:var(--paper);
+    display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:var(--shadow-sm)}
+  .brand .name{font-family:"Caveat",cursive;font-weight:700;font-size:24px;line-height:1}
+  .brand-sub{font-family:"Archivo",sans-serif;font-style:italic;font-weight:700;text-transform:uppercase;
+    letter-spacing:.08em;font-size:10px;color:var(--muted);margin:6px 0 24px}
+  .nav-group{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.09em;font-size:10px;color:var(--faint);margin:20px 0 7px}
+  .nav-link{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:10px;cursor:pointer;
+    color:var(--ink-soft);font-size:13.5px;font-weight:600;text-decoration:none;
+    border:2px solid transparent;transition:all .12s}
+  .nav-link:hover{background:var(--paper);border-color:var(--line)}
+  .nav-link.active{background:var(--orange);border-color:var(--line);color:#fff;box-shadow:var(--shadow-sm)}
+  .nav-link .num{font-family:var(--mono);font-size:11px;width:18px;flex-shrink:0;opacity:.7}
+
+  main{padding:0 0 120px}
+  .container{max-width:780px;margin:0 auto;padding:0 44px}
+
+  /* ---------- top bar ---------- */
+  .topbar{background:var(--cream-deep);border-bottom:2px solid var(--line);padding:16px 44px;
+    display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:40}
+  .topbar .eyebrow{color:var(--ink)}
+  .topbar .save{margin-left:auto;background:var(--paper);border:2px solid var(--line);border-radius:99px;
+    padding:9px 20px;font-weight:700;font-size:13px;box-shadow:var(--shadow-sm);cursor:pointer;color:var(--ink)}
+  .topbar .save:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+  .topbar .tprogress{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:64px 0 44px}
+  .hero .container{position:relative}
+  .pill-label{display:inline-flex;align-items:center;gap:8px;background:var(--orange-soft);
+    border:2px solid var(--line);border-radius:99px;padding:6px 15px;margin-bottom:24px;
+    font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.05em;font-size:11px;box-shadow:var(--shadow-sm)}
+  .pill-label .spark{color:var(--orange-deep)}
+  .hero h1{font-family:"Anton",sans-serif;font-weight:400;font-size:56px;line-height:1.02;
+    letter-spacing:.004em;margin-bottom:22px}
+  .hero h1 .hl{color:var(--orange-deep);position:relative}
+  .hero p.lede{font-size:18px;color:var(--ink-soft);max-width:600px;line-height:1.55}
+  .thesis-card{margin-top:34px;background:var(--paper);border:2px solid var(--line);border-radius:18px;
+    padding:22px 24px;box-shadow:var(--shadow);font-size:15.5px}
+  .thesis-card b{color:var(--orange-deep)}
+
+  /* ---------- section ---------- */
+  section.block{padding:54px 0;scroll-margin-top:74px}
+  section.block + section.block{border-top:2px dashed #e3d2bd}
+  .sec-head{display:flex;align-items:center;gap:13px;margin-bottom:6px}
+  .sec-num{font-family:var(--mono);font-size:13px;color:#fff;background:var(--ink);
+    border-radius:7px;padding:3px 8px;font-weight:600}
+  .sec-head h2{font-family:"Anton",sans-serif;font-weight:400;font-size:32px;letter-spacing:.005em}
+  .sec-intro{color:var(--ink-soft);font-size:16px;margin:12px 0 28px;max-width:640px}
+  h3.sub{font-family:"Archivo",sans-serif;font-weight:800;font-size:19px;margin:34px 0 12px;letter-spacing:-.01em}
+  p{margin:0 0 14px}.body-muted{color:var(--muted)}
+
+  /* card base */
+  .card{background:var(--paper);border:2px solid var(--line);border-radius:16px;box-shadow:var(--shadow-sm)}
+
+  /* ---------- reframe library ---------- */
+  .reframe-lib{display:flex;flex-direction:column;gap:12px}
+  .rf{border:2px solid var(--line);border-radius:14px;background:var(--paper);overflow:hidden;box-shadow:var(--shadow-sm)}
+  .rf-head{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer}
+  .rf-head:hover{background:var(--orange-soft)}
+  .rf-n{font-family:var(--mono);font-size:12px;background:var(--ink);color:#fff;border-radius:6px;
+    padding:3px 8px;flex-shrink:0}
+  .rf-head h4{font-family:"Archivo",sans-serif;font-weight:800;font-size:15px;flex:1}
+  .rf-chev{color:var(--muted);transition:transform .2s}
+  .rf.open .rf-chev{transform:rotate(90deg)}
+  .rf-body{display:none;padding:4px 18px 18px}
+  .rf.open .rf-body{display:block}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ba .box{border:2px solid var(--line);border-radius:11px;padding:14px 16px}
+  .ba .before{background:#fdeee8;border-color:#d9a78f}
+  .ba .after{background:#e9f5ed;border-color:#8fc4a3}
+  .ba .t{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.06em;font-size:10px;margin-bottom:8px}
+  .ba .before .t{color:var(--red)} .ba .after .t{color:var(--green)}
+  .ba p{font-size:13.5px;margin:0;color:var(--ink)}
+
+  /* ---------- scope formula ---------- */
+  .formula{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+  .formula > div{background:var(--paper);border:2px solid var(--line);border-radius:13px;padding:15px 14px;
+    box-shadow:var(--shadow-sm)}
+  .formula .k{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.05em;font-size:11px;color:var(--orange-deep);margin-bottom:7px}
+  .formula .v{font-size:13px;color:var(--ink-soft);line-height:1.4}
+  @media(max-width:680px){.formula{grid-template-columns:1fr 1fr}}
+
+  /* ---------- mechanism cards ---------- */
+  .mech{border:2px solid var(--line);border-radius:16px;background:var(--paper);margin:14px 0;
+    overflow:hidden;box-shadow:var(--shadow-sm)}
+  .mech-head{display:flex;align-items:center;gap:14px;padding:17px 20px;cursor:pointer}
+  .mech-head:hover{background:var(--orange-soft)}
+  .mech-icon{width:42px;height:42px;border-radius:11px;border:2px solid var(--line);background:var(--cream-deep);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px}
+  .mech-titles{flex:1}
+  .mech-titles h4{font-family:"Archivo",sans-serif;font-weight:800;font-size:16.5px}
+  .mech-titles .who{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .mech-cadence{font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--orange);
+    border:2px solid var(--line);padding:4px 11px;border-radius:99px;white-space:nowrap;font-weight:600}
+  .chev{color:var(--muted);transition:transform .2s}
+  .mech.open .chev{transform:rotate(90deg)}
+  .mech-body{display:none;padding:0 20px 20px}
+  .mech.open .mech-body{display:block}
+  .mech-why{font-size:14px;color:var(--ink-soft);border-top:2px dashed #e3d2bd;padding-top:15px;margin-bottom:15px}
+
+  /* inline integration tags */
+  .itags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
+  .itag{display:flex;align-items:center;gap:7px;background:var(--cream);border:2px solid var(--line);
+    border-radius:10px;padding:7px 11px;font-size:12px;box-shadow:var(--shadow-sm)}
+  .itag .ik{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.04em;font-size:9.5px;color:var(--orange-deep)}
+  .itag .iv{color:var(--ink);font-weight:500}
+
+  /* template block */
+  .tpl{background:var(--cream);border:2px solid var(--line);border-radius:11px;overflow:hidden}
+  .tpl-bar{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;
+    border-bottom:2px solid var(--line);background:var(--cream-deep)}
+  .tpl-bar span{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .copy-btn{font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--paper);
+    border:2px solid var(--line);padding:4px 11px;border-radius:7px;cursor:pointer;font-weight:600;
+    box-shadow:2px 2px 0 var(--ink)}
+  .copy-btn:hover{background:var(--orange);color:#fff}
+  .copy-btn.done{background:var(--green);color:#fff}
+  pre{margin:0;padding:15px;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--ink);
+    white-space:pre-wrap;overflow-x:auto}
+  pre .lbl{color:var(--orange-deep);font-weight:600}
+  pre .cmt{color:var(--faint)}
+
+  /* ---------- integration playbook ---------- */
+  .play{border:2px solid var(--line);border-radius:16px;background:var(--paper);margin:16px 0;
+    overflow:hidden;box-shadow:var(--shadow-sm)}
+  .play-head{display:flex;align-items:center;gap:12px;padding:15px 20px;background:var(--cream-deep);
+    border-bottom:2px solid var(--line)}
+  .play-head .pico{font-size:18px}
+  .play-head h4{font-family:"Archivo",sans-serif;font-weight:800;font-size:16px;flex:1}
+  .play-grid{display:grid;grid-template-columns:1fr 1fr}
+  .play-cell{padding:15px 18px;border-bottom:2px dashed #e3d2bd}
+  .play-cell:nth-child(odd){border-right:2px dashed #e3d2bd}
+  .play-cell:nth-last-child(-n+2){border-bottom:none}
+  .play-cell .ck{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.05em;font-size:10.5px;margin-bottom:7px;display:flex;align-items:center;gap:7px}
+  .play-cell.when .ck{color:var(--orange-deep)}
+  .play-cell.where .ck{color:var(--pm)}
+  .play-cell.who .ck{color:var(--eng)}
+  .play-cell.auto .ck{color:var(--green)}
+  .play-cell p{font-size:13px;margin:0;color:var(--ink-soft);line-height:1.5}
+  .play-cell code{font-family:var(--mono);font-size:11.5px;background:var(--cream);border:1px solid #e3d2bd;
+    border-radius:4px;padding:1px 5px;color:var(--ink)}
+  @media(max-width:680px){.play-grid{grid-template-columns:1fr}
+    .play-cell:nth-child(odd){border-right:none}.play-cell{border-bottom:2px dashed #e3d2bd!important}}
+
+  /* ---------- ownership matrix ---------- */
+  .own-legend{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0 12px;font-size:13px}
+  .own-legend span{display:flex;align-items:center;gap:7px;color:var(--ink-soft);font-weight:600}
+  .own-dot{width:11px;height:11px;border-radius:4px;border:1.5px solid var(--line)}
+  .matrix{border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper);box-shadow:var(--shadow-sm)}
+  .matrix-row{display:grid;grid-template-columns:1fr 80px;align-items:center;gap:10px;
+    padding:12px 16px;border-bottom:1.5px solid #efe2d2}
+  .matrix-row:last-child{border-bottom:none}
+  .matrix-row:hover{background:var(--orange-soft)}
+  .matrix-row .item{color:var(--ink);font-weight:500}
+  .matrix-row .sub{color:var(--muted);font-size:12px;margin-top:1px}
+  .own-pill{justify-self:end;font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 9px;
+    border-radius:7px;border:1.5px solid var(--line)}
+  .own-pill.pm{background:rgba(63,127,214,.14);color:var(--pm)}
+  .own-pill.eng{background:rgba(145,102,201,.14);color:var(--eng)}
+  .own-pill.shared{background:rgba(79,157,107,.14);color:var(--shared)}
+  .matrix-group{font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;
+    letter-spacing:.07em;font-size:10px;color:var(--muted);background:var(--cream-deep);padding:9px 16px;
+    border-bottom:1.5px solid #efe2d2}
+
+  /* ---------- validate checklist ---------- */
+  .validate{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+  .vchip{display:flex;gap:11px;align-items:flex-start;background:var(--paper);border:2px solid var(--line);
+    border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+  .vchip .vn{font-family:var(--mono);font-size:12px;color:#fff;background:var(--orange);border:1.5px solid var(--line);
+    border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:600}
+  .vchip p{font-size:13.5px;margin:0}.vchip b{font-family:"Archivo",sans-serif;font-weight:800}
+
+  /* ---------- status G/A/R ---------- */
+  .gar{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+  .gar > div{border:2px solid var(--line);border-radius:13px;padding:15px 16px;background:var(--paper);box-shadow:var(--shadow-sm)}
+  .gar .dot{width:12px;height:12px;border-radius:99px;border:1.5px solid var(--line);display:inline-block;margin-right:8px}
+  .gar h4{font-family:"Archivo",sans-serif;font-weight:800;font-size:14.5px;display:flex;align-items:center;margin-bottom:6px}
+  .gar p{font-size:13px;color:var(--ink-soft);margin:0}
+  .gar .g .dot{background:var(--green)} .gar .a .dot{background:var(--amber)} .gar .r .dot{background:var(--red)}
+
+  /* ---------- push/pull ---------- */
+  .pushpull{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  .pushpull .card{padding:18px}
+  .pushpull h4{font-family:"Archivo",sans-serif;font-weight:800;font-size:16px;margin-bottom:3px;
+    display:flex;align-items:center;gap:9px}
+  .pushpull .ar{width:26px;height:26px;border:2px solid var(--line);border-radius:8px;display:flex;
+    align-items:center;justify-content:center;font-size:14px;background:var(--cream-deep)}
+  .pushpull .desc{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .pushpull ul{margin:0;padding-left:18px}.pushpull li{font-size:13.5px;color:var(--ink-soft);margin-bottom:5px}
+
+  /* ---------- timeline ---------- */
+  .timeline{position:relative;margin:22px 0 6px;padding-left:30px}
+  .timeline::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tstep{position:relative;margin-bottom:20px}
+  .tstep::before{content:"";position:absolute;left:-26px;top:3px;width:14px;height:14px;border-radius:99px;
+    background:var(--orange);border:2px solid var(--line)}
+  .tstep .wk{font-family:var(--mono);font-size:11px;color:var(--orange-deep);font-weight:600;margin-bottom:3px}
+  .tstep h4{font-family:"Archivo",sans-serif;font-weight:800;font-size:15px;margin-bottom:4px}
+  .tstep p{font-size:13.5px;color:var(--ink-soft);margin:0}
+
+  /* ---------- rules ---------- */
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:18px 0}
+  .rule{border:2px solid var(--line);border-radius:12px;padding:15px;background:var(--paper);
+    display:flex;gap:11px;align-items:flex-start;box-shadow:var(--shadow-sm)}
+  .rule .ck{color:var(--orange-deep);font-size:16px;flex-shrink:0;margin-top:-1px;font-weight:700}
+  .rule p{font-size:13.5px;margin:0}
+
+  /* ---------- note ---------- */
+  .note{background:var(--orange-soft);border:2px solid var(--line);border-radius:14px;padding:15px 18px;
+    margin:20px 0;font-size:14px;color:var(--ink-soft);box-shadow:var(--shadow-sm)}
+  .note b{color:var(--orange-deep)}
+
+  .sources{font-size:12px;color:var(--muted);border-top:2px dashed #e3d2bd;padding-top:16px;margin-top:28px}
+  .sources b{color:var(--ink-soft)}
+
+  @media(max-width:880px){
+    .shell{grid-template-columns:1fr}nav.rail{display:none}
+    .container,.topbar{padding-left:22px;padding-right:22px}
+    .reframe,.pushpull,.rules,.gar,.validate,.ba,.formula{grid-template-columns:1fr}
+    .hero h1{font-size:38px}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- RAIL -->
+  <nav class="rail">
+    <div class="brand">
+      <div class="fire">🔥</div>
+      <div class="name">Visibility Layer</div>
+    </div>
+    <div class="brand-sub">Startup PM Delivery Guide</div>
+
+    <div class="nav-group">Foundation</div>
+    <a class="nav-link" data-to="thesis"><span class="num">00</span>The core problem</a>
+    <a class="nav-link" data-to="scope"><span class="num">01</span>Scope your ask</a>
+
+    <div class="nav-group">The system</div>
+    <a class="nav-link" data-to="mechanisms"><span class="num">02</span>Four mechanisms</a>
+    <a class="nav-link" data-to="integration"><span class="num">03</span>Integration playbook</a>
+    <a class="nav-link" data-to="ownership"><span class="num">04</span>Who owns what</a>
+    <a class="nav-link" data-to="validate"><span class="num">05</span>What to validate</a>
+    <a class="nav-link" data-to="reporting"><span class="num">06</span>Reporting up</a>
+    <a class="nav-link" data-to="loop"><span class="num">07</span>Keep people looped</a>
+
+    <div class="nav-group">Putting it to work</div>
+    <a class="nav-link" data-to="overload"><span class="num">08</span>Operational overload</a>
+    <a class="nav-link" data-to="first30"><span class="num">09</span>First 30 days</a>
+    <a class="nav-link" data-to="rhythm"><span class="num">10</span>Weekly rhythm</a>
+    <a class="nav-link" data-to="backlog"><span class="num">11</span>Backlog &amp; sequencing</a>
+  </nav>
+
+  <main>
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <span class="eyebrow">Guide in progress</span>
+      <span class="tprogress" id="tprog">0% read</span>
+      <button class="save" onclick="window.print()">Save &amp; export</button>
+    </div>
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="container">
+        <div class="pill-label"><span class="spark">✦</span> Product delivery · operating guide</div>
+        <h1>Startup chaos isn't a delivery problem.<br>It's an <span class="hl">information</span> problem.</h1>
+        <p class="lede">Founders decide and ship. The rest of the team finds out late, or never. Speed isn't what's broken — visibility is. This is the lightweight system a PM installs to fix it, and exactly where each piece lives in Slack, Notion and Linear.</p>
+        <div class="thesis-card">
+          The PM's job here is to be the <b>integration layer</b> between founders, leadership and engineering — adding just enough repeatable structure that <b>priorities, decisions and releases stay visible</b>, without dropping a heavy process on a team that doesn't want one.
+        </div>
+      </div>
+    </header>
+
+    <!-- 00 THESIS -->
+    <section class="block" id="thesis">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">00</span><h2>The core problem</h2></div>
+        <p class="sec-intro">Before any template, name the real failure. In most early startups it's not that work moves slowly — it's that decisions and releases happen informally and never get recorded, so context evaporates.</p>
+        <p>The trap is bundling. A question like <span class="body-muted">"how do I handle process, roles, communication, tools, automation and reporting?"</span> hides the one thing that's actually breaking. The listener answers the most familiar part, not the most important one — and you burn another round narrowing it down.</p>
+        <div class="note"><b>The reframe that unlocks everything:</b> the symptom is information loss, not slow delivery. Once that's the stated problem, the whole solution becomes "make information traversable" — and stays lightweight by design.</div>
+      </div>
+    </section>
+
+    <!-- 01 SCOPE -->
+    <section class="block" id="scope">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">01</span><h2>Scope your ask before you build</h2></div>
+        <p class="sec-intro">One real problem usually arrives wrapped in five adjacent ones. The same four-part frame that sharpens a question for leadership also sharpens how you scope a mechanism for yourself.</p>
+
+        <div class="formula">
+          <div><div class="k">Context</div><div class="v">The environment — startup, no PMO, informal Slack culture.</div></div>
+          <div><div class="k">Problem</div><div class="v">The one thing breaking — decisions shipped without the team knowing.</div></div>
+          <div><div class="k">Goal</div><div class="v">The decision or help you want — what to install first.</div></div>
+          <div><div class="k">Constraint</div><div class="v">The limits — little time, no tooling budget, low process appetite.</div></div>
+        </div>
+
+        <h3 class="sub">The reframe library</h3>
+        <p class="body-muted">Four real bundled questions, each narrowed to its true ask. Tap to expand.</p>
+        <div class="reframe-lib">
+          <div class="rf">
+            <div class="rf-head"><span class="rf-n">01</span><h4>Process, roles &amp; visibility</h4><span class="rf-chev">▶</span></div>
+            <div class="rf-body"><div class="ba">
+              <div class="box before"><div class="t">Bundled</div><p>How do you define RACIs and responsibilities for each role, together with information sharing, to create structure and drive the full development process?</p></div>
+              <div class="box after"><div class="t">Scoped</div><p>Founders make decisions and ship changes, but the team often doesn't know what changed or why. What should I set up first: a release log, a decision log, role ownership, or a communication cadence?</p></div>
+            </div></div>
+          </div>
+          <div class="rf">
+            <div class="rf-head"><span class="rf-n">02</span><h4>Tools, automation &amp; best practices</h4><span class="rf-chev">▶</span></div>
+            <div class="rf-body"><div class="ba">
+              <div class="box before"><div class="t">Bundled</div><p>How would we execute this kind of thing as PMs, since it also takes a lot of time?</p></div>
+              <div class="box after"><div class="t">Scoped</div><p>I'm not asking which product to buy. Within the tools we already use, what are the most practical workflows or templates a PM can introduce to improve visibility and reduce information loss?</p></div>
+            </div></div>
+          </div>
+          <div class="rf">
+            <div class="rf-head"><span class="rf-n">03</span><h4>Velocity, ETA &amp; reporting</h4><span class="rf-chev">▶</span></div>
+            <div class="rf-body"><div class="ba">
+              <div class="box before"><div class="t">Bundled</div><p>How do we build a checklist of SOPs to keep up with everything… scope ETAs when things change… track delays… rerank initiatives… report to leadership?</p></div>
+              <div class="box after"><div class="t">Scoped</div><p>My real problem is operational overload: multiple parallel projects, moving ETAs, and frequent reporting asks. What is the minimum PM operating system you'd recommend to keep this manageable week to week?</p></div>
+            </div></div>
+          </div>
+          <div class="rf">
+            <div class="rf-head"><span class="rf-n">04</span><h4>Stories, tech tasks &amp; backlog</h4><span class="rf-chev">▶</span></div>
+            <div class="rf-body"><div class="ba">
+              <div class="box before"><div class="t">Bundled</div><p>How do we structure bug fixing and user stories, and when we write them, what if we need technical info like API endpoints, and how do we sequence all those tasks?</p></div>
+              <div class="box after"><div class="t">Scoped</div><p>In a small startup, how far should the PM go in writing technical detail inside tickets — stop at stories + acceptance criteria, or also define APIs and the backend/frontend split?</p></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="note"><b>Rule of thumb.</b> Before: "How do I handle process, roles, comms, tools, automation and reporting?" After: "My problem is X. I want help deciding Y. Constraints are Z."</div>
+      </div>
+    </section>
+
+    <!-- 02 MECHANISMS -->
+    <section class="block" id="mechanisms">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">02</span><h2>Four mechanisms, copy-ready</h2></div>
+        <p class="sec-intro">The whole system is four small habits. Don't roll them out at once — pick the one that closes your biggest leak first, run it yourself, then make it shared. Each card carries quick integration tags; the full when / where / who / automation lives in the next section.</p>
+
+        <div class="mech open" data-mech>
+          <div class="mech-head">
+            <div class="mech-icon">🚀</div>
+            <div class="mech-titles"><h4>Release log</h4><div class="who">Whoever ships posts it · PM seeds the habit</div></div>
+            <span class="mech-cadence">EVERY RELEASE</span><span class="chev">▶</span>
+          </div>
+          <div class="mech-body">
+            <div class="itags">
+              <div class="itag"><span class="ik">When</span><span class="iv">On merge / deploy</span></div>
+              <div class="itag"><span class="ik">Where</span><span class="iv">#releases (Slack) → Notion DB</span></div>
+              <div class="itag"><span class="ik">Who</span><span class="iv">Anyone who ships</span></div>
+            </div>
+            <div class="mech-why">Directly answers "what changed and why?" Lives in a dedicated <code style="font-family:var(--mono);font-size:12px">#releases</code> channel so anything shipped is visible without anyone asking.</div>
+            <div class="tpl"><div class="tpl-bar"><span>#releases · per meaningful ship</span><button class="copy-btn" data-copy>Copy</button></div>
+<pre><span class="lbl">[SHIPPED]</span> Title
+<span class="lbl">Owner:</span>
+<span class="lbl">What changed:</span>
+<span class="lbl">Why it matters:</span>
+<span class="lbl">Who is affected:</span>
+<span class="lbl">Anything to watch:</span>
+<span class="lbl">Link:</span></pre></div>
+          </div>
+        </div>
+
+        <div class="mech" data-mech>
+          <div class="mech-head">
+            <div class="mech-icon">🗳️</div>
+            <div class="mech-titles"><h4>Decision log</h4><div class="who">PM owns · founders &amp; engineering contribute</div></div>
+            <span class="mech-cadence">AS DECIDED + WEEKLY REVIEW</span><span class="chev">▶</span>
+          </div>
+          <div class="mech-body">
+            <div class="itags">
+              <div class="itag"><span class="ik">When</span><span class="iv">At decision + weekly review</span></div>
+              <div class="itag"><span class="ik">Where</span><span class="iv">Notion DB (linked from Slack)</span></div>
+              <div class="itag"><span class="ik">Who</span><span class="iv">PM logs · founders/eng input</span></div>
+            </div>
+            <div class="mech-why">The single highest-leverage habit. Decisions get made and lost constantly; a one-line log makes the <em>why</em> recoverable months later.</div>
+            <div class="tpl"><div class="tpl-bar"><span>decision-log · append as decisions land</span><button class="copy-btn" data-copy>Copy</button></div>
+<pre><span class="lbl">Date:</span>
+<span class="lbl">Decision:</span>
+<span class="lbl">Why:</span>
+<span class="lbl">Owner:</span>
+<span class="lbl">Affected area:</span>
+<span class="lbl">Follow-up:</span></pre></div>
+          </div>
+        </div>
+
+        <div class="mech" data-mech>
+          <div class="mech-head">
+            <div class="mech-icon">🎯</div>
+            <div class="mech-titles"><h4>Weekly prioritization sync</h4><div class="who">PM + engineering lead + founder when needed</div></div>
+            <span class="mech-cadence">30 MIN · WEEKLY</span><span class="chev">▶</span>
+          </div>
+          <div class="mech-body">
+            <div class="itags">
+              <div class="itag"><span class="ik">When</span><span class="iv">Weekly, start of week</span></div>
+              <div class="itag"><span class="ik">Where</span><span class="iv">Linear cycle view + Notion agenda</span></div>
+              <div class="itag"><span class="ik">Who</span><span class="iv">PM · eng lead · founder if needed</span></div>
+            </div>
+            <div class="mech-why">Confirms what matters this week and surfaces anything needing a founder decision before it becomes a fire.</div>
+            <div class="tpl"><div class="tpl-bar"><span>weekly priorities sync · standing agenda</span><button class="copy-btn" data-copy>Copy</button></div>
+<pre><span class="lbl">Top priorities this week:</span>
+<span class="lbl">What changed since last week:</span>
+<span class="lbl">Open dependencies / risks:</span>
+<span class="lbl">Items needing a founder decision:</span>
+<span class="lbl">Realistically shipping next:</span></pre></div>
+          </div>
+        </div>
+
+        <div class="mech" data-mech>
+          <div class="mech-head">
+            <div class="mech-icon">📊</div>
+            <div class="mech-titles"><h4>Leadership update</h4><div class="who">PM → founders / leadership</div></div>
+            <span class="mech-cadence">ASYNC · WEEKLY</span><span class="chev">▶</span>
+          </div>
+          <div class="mech-body">
+            <div class="itags">
+              <div class="itag"><span class="ik">When</span><span class="iv">Weekly, end of week</span></div>
+              <div class="itag"><span class="ik">Where</span><span class="iv">#leadership (Slack), async</span></div>
+              <div class="itag"><span class="ik">Who</span><span class="iv">PM → founders</span></div>
+            </div>
+            <div class="mech-why">Leadership wants clarity, not a dashboard. A green / amber / red summary plus the one decision you need is enough.</div>
+            <div class="tpl"><div class="tpl-bar"><span>leadership update · weekly async</span><button class="copy-btn" data-copy>Copy</button></div>
+<pre><span class="cmt">🟢</span> <span class="lbl">Green</span>  — on track:
+<span class="cmt">🟡</span> <span class="lbl">Amber</span> — at risk:
+<span class="cmt">🔴</span> <span class="lbl">Red</span>   — blocked / slipped:
+
+<span class="lbl">Key decision needed:</span>
+<span class="lbl">Expected next milestones:</span></pre></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 INTEGRATION PLAYBOOK -->
+    <section class="block" id="integration">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">03</span><h2>Integration playbook</h2></div>
+        <p class="sec-intro">The when, where, who and a named automation for each mechanism, assuming a Slack + Notion + Linear stack.</p>
+
+        <div class="play">
+          <div class="play-head"><span class="pico">🚀</span><h4>Release log</h4></div>
+          <div class="play-grid">
+            <div class="play-cell when"><div class="ck">⏱ When</div><p>Triggered per ship: a merge to <code>main</code> or a production deploy.</p></div>
+            <div class="play-cell where"><div class="ck">📍 Where it lives</div><p>Posts to Slack <code>#releases</code> as the human-readable feed; mirrored into a Notion "Releases" database for searchable history.</p></div>
+            <div class="play-cell who"><div class="ck">👥 Who</div><p>Whoever shipped writes it — they hold the context. PM seeds the habit and the template.</p></div>
+            <div class="play-cell auto"><div class="ck">⚡ Automation</div><p><b>Linear → Slack</b> native integration auto-posts completed issues to <code>#releases</code>. <b>Zapier/Make:</b> on Linear issue → Done, create a Notion "Releases" row.</p></div>
+          </div>
+        </div>
+
+        <div class="play">
+          <div class="play-head"><span class="pico">🗳️</span><h4>Decision log</h4></div>
+          <div class="play-grid">
+            <div class="play-cell when"><div class="ck">⏱ When</div><p>Logged the moment a real decision lands. Reviewed once weekly to catch anything missed.</p></div>
+            <div class="play-cell where"><div class="ck">📍 Where it lives</div><p>A single Notion "Decisions" database — append-only, one row per decision.</p></div>
+            <div class="play-cell who"><div class="ck">👥 Who</div><p>PM owns the log. Founders and eng contribute the <em>why</em>.</p></div>
+            <div class="play-cell auto"><div class="ck">⚡ Automation</div><p><b>Slack workflow:</b> a <code>/decision</code> shortcut opens a form that writes straight to the Notion DB.</p></div>
+          </div>
+        </div>
+
+        <div class="play">
+          <div class="play-head"><span class="pico">🎯</span><h4>Weekly prioritization sync</h4></div>
+          <div class="play-grid">
+            <div class="play-cell when"><div class="ck">⏱ When</div><p>Fixed weekly slot, start of week, 30 minutes. Calendar-recurring so it's never re-negotiated.</p></div>
+            <div class="play-cell where"><div class="ck">📍 Where it lives</div><p>Run off a Linear cycle / board view; capture agenda &amp; outcomes in a rolling Notion doc.</p></div>
+            <div class="play-cell who"><div class="ck">👥 Who</div><p>PM + eng lead always; founder only when a tradeoff needs their call.</p></div>
+            <div class="play-cell auto"><div class="ck">⚡ Automation</div><p><b>Linear:</b> saved "This cycle" + "Slipped" views auto-surface what changed. <b>Zapier/Make:</b> scheduled job posts the agenda template to Slack before the meeting.</p></div>
+          </div>
+        </div>
+
+        <div class="play">
+          <div class="play-head"><span class="pico">📊</span><h4>Leadership update</h4></div>
+          <div class="play-grid">
+            <div class="play-cell when"><div class="ck">⏱ When</div><p>Weekly, end of week, async. A short written post beats a meeting.</p></div>
+            <div class="play-cell where"><div class="ck">📍 Where it lives</div><p>Posted in a Slack <code>#leadership</code> channel; status pulled from the same Linear cycle data.</p></div>
+            <div class="play-cell who"><div class="ck">👥 Who</div><p>PM writes it. Founders are the audience; the "decision needed" line is what earns their attention.</p></div>
+            <div class="play-cell auto"><div class="ck">⚡ Automation</div><p><b>Make/Zapier:</b> scheduled Friday job assembles a draft from Linear cycle progress + the week's <code>#releases</code> posts, drops it in your DMs to edit and send. Keep the send human.</p></div>
+          </div>
+        </div>
+
+        <div class="note"><b>Sequencing rule:</b> manual first, automate second. Prove a mechanism earns its keep by hand for a couple of weeks; only then wire the mechanical parts. Automate the plumbing, never the judgment.</div>
+      </div>
+    </section>
+
+    <!-- 04 OWNERSHIP -->
+    <section class="block" id="ownership">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">04</span><h2>Who owns what</h2></div>
+        <p class="sec-intro">The clean split: PM owns the <em>what</em> and <em>why</em>; engineering owns the <em>how</em>. A few things are genuinely shared and get resolved in refinement.</p>
+
+        <div class="own-legend">
+          <span><span class="own-dot" style="background:rgba(63,127,214,.4)"></span>PM owns</span>
+          <span><span class="own-dot" style="background:rgba(145,102,201,.4)"></span>Engineering owns</span>
+          <span><span class="own-dot" style="background:rgba(79,157,107,.4)"></span>Shared in refinement</span>
+        </div>
+
+        <div class="matrix">
+          <div class="matrix-group">The "what" and "why"</div>
+          <div class="matrix-row"><div class="item">PRD &amp; problem framing</div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div class="item">User stories &amp; acceptance criteria</div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div class="item">Prioritization &amp; ordering</div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div class="item">Stakeholder context &amp; tradeoff calls</div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-group">The "how"</div>
+          <div class="matrix-row"><div class="item">API &amp; endpoint design</div><span class="own-pill eng">ENG</span></div>
+          <div class="matrix-row"><div class="item">Architecture &amp; service boundaries</div><span class="own-pill eng">ENG</span></div>
+          <div class="matrix-row"><div class="item">Frontend / backend split &amp; task breakdown</div><span class="own-pill eng">ENG</span></div>
+          <div class="matrix-row"><div class="item">Effort estimates &amp; implementation sequencing</div><span class="own-pill eng">ENG</span></div>
+          <div class="matrix-group">Resolved together in refinement</div>
+          <div class="matrix-row"><div class="item">Assumptions &amp; unknowns</div><span class="own-pill shared">BOTH</span></div>
+          <div class="matrix-row"><div class="item">Dependencies &amp; risks</div><span class="own-pill shared">BOTH</span></div>
+          <div class="matrix-row"><div class="item">Scope cuts</div><span class="own-pill shared">BOTH</span></div>
+          <div class="matrix-row"><div class="item">Definition of Ready for sprint entry</div><span class="own-pill shared">BOTH</span></div>
+        </div>
+
+        <div class="note"><b>How technical should a PM's tickets get?</b> By default, stop at user stories + acceptance criteria. Add technical notes only when the team explicitly wants them or they're true constraints. Let engineers create the API / backend / frontend split in refinement.</div>
+      </div>
+    </section>
+
+    <!-- 05 VALIDATE -->
+    <section class="block" id="validate">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">05</span><h2>What the PM should proactively validate</h2></div>
+        <p class="sec-intro">Validation is part of the role, not overstepping. Reconcile these five with engineering and founders rather than assuming.</p>
+        <div class="validate">
+          <div class="vchip"><span class="vn">1</span><p><b>Prioritization</b> — is the order everyone's working to actually the agreed one?</p></div>
+          <div class="vchip"><span class="vn">2</span><p><b>Definition / scope clarity</b> — is "done" understood the same way by all sides?</p></div>
+          <div class="vchip"><span class="vn">3</span><p><b>Decision log</b> — are the decisions that got made actually captured?</p></div>
+          <div class="vchip"><span class="vn">4</span><p><b>Release visibility</b> — does the team know what shipped and why?</p></div>
+          <div class="vchip" style="grid-column:1/-1"><span class="vn">5</span><p><b>ETA communication</b> — has the date been reconciled with engineering <em>before</em> it goes anywhere external?</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 REPORTING -->
+    <section class="block" id="reporting">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">06</span><h2>Reporting up, minimally</h2></div>
+        <p class="sec-intro">The minimum viable leadership report is three colors and one decision. Resist building anything fancier until someone asks for it.</p>
+        <div class="gar">
+          <div class="g"><h4><span class="dot"></span>Green</h4><p>On track. No action needed — stated plainly so silence isn't mistaken for trouble.</p></div>
+          <div class="a"><h4><span class="dot"></span>Amber</h4><p>At risk. Name the risk and what would move it back to green, before it slips.</p></div>
+          <div class="r"><h4><span class="dot"></span>Red</h4><p>Blocked or slipped. Pair it with the specific decision or unblock you need.</p></div>
+        </div>
+        <div class="note"><b>The ETA rule:</b> never broadcast an ETA you set alone. Reconcile with engineering first, then communicate externally. When timelines are genuinely uncertain, give a confidence level and a next checkpoint instead of false-precision.</div>
+      </div>
+    </section>
+
+    <!-- 07 LOOP -->
+    <section class="block" id="loop">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">07</span><h2>Keeping people looped without bothering them</h2></div>
+        <p class="sec-intro">Push only what's important; make everything else self-serve.</p>
+        <div class="pushpull">
+          <div class="card"><h4><span class="ar">→</span> Push</h4><div class="desc">Send proactively, only when genuinely important.</div>
+            <ul><li>Priority changes</li><li>Scope changes</li><li>A release shipped</li><li>ETA changes materially</li><li>A blocker needs a decision</li></ul></div>
+          <div class="card"><h4><span class="ar">↺</span> Pull</h4><div class="desc">Keep current &amp; searchable so people self-serve.</div>
+            <ul><li>The backlog</li><li>The release log</li><li>The decision log</li><li>The weekly summary</li></ul></div>
+        </div>
+        <h3 class="sub">Tune the message to the audience</h3>
+        <div class="matrix">
+          <div class="matrix-row"><div><div class="item">Engineering</div><div class="sub">Refined backlog · clear stories + acceptance criteria · priority order · risks &amp; dependencies · ETA validated before it goes external</div></div></div>
+          <div class="matrix-row"><div><div class="item">Founders / leadership</div><div class="sub">Business impact · priority shifts · delivery confidence · decisions required · concise status</div></div></div>
+          <div class="matrix-row"><div><div class="item">Whole team</div><div class="sub">Release log · decision log · simple visibility channels they can browse anytime</div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 OVERLOAD -->
+    <section class="block" id="overload">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">08</span><h2>Operational overload</h2></div>
+        <p class="sec-intro">Many parallel projects, moving ETAs, constant reporting asks. The answer isn't more tracking — it's the minimum operating system that keeps it manageable.</p>
+
+        <h3 class="sub">When one project slips, rerank — don't absorb</h3>
+        <div class="timeline">
+          <div class="tstep"><h4>Surface the slip early</h4><p>The Linear "slipped / off-track" view makes it visible the same week, not at the deadline.</p></div>
+          <div class="tstep"><h4>Re-rank against everything else</h4><p>A slip changes relative priority. Re-order the single backlog rather than silently extending the date.</p></div>
+          <div class="tstep"><h4>Reconcile the new ETA with engineering</h4><p>Get the revised date from the people doing the work — never reset it solo.</p></div>
+          <div class="tstep"><h4>Push the change to whoever was counting on it</h4><p>Priority / ETA change is a push event. The decision goes in the log.</p></div>
+        </div>
+
+        <div class="note"><b>The minimum operating system:</b> one weekly priorities sync, one async leadership update, the decision and release logs running continuously, and ETAs reconciled before they're broadcast. That's enough to carry many parallel tracks without a PMO.</div>
+      </div>
+    </section>
+
+    <!-- 09 FIRST 30 -->
+    <section class="block" id="first30">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">09</span><h2>Your first 30 days</h2></div>
+        <p class="sec-intro">When you join, don't impose a big process. Create visibility <em>around</em> the existing chaos first.</p>
+        <div class="timeline">
+          <div class="tstep"><div class="wk">WEEK 1</div><h4>Observe before you change anything</h4><p>Watch how decisions and releases actually happen today. Resist fixing on day one.</p></div>
+          <div class="tstep"><div class="wk">WEEK 1–2</div><h4>Find where information gets lost</h4><p>Pinpoint the single biggest leak — usually undocumented decisions or invisible releases.</p></div>
+          <div class="tstep"><div class="wk">WEEK 2</div><h4>Introduce exactly one mechanism</h4><p>Pick one: <code>#releases</code>, the decision log, or the weekly priorities sync. Just one.</p></div>
+          <div class="tstep"><div class="wk">WEEK 2–3</div><h4>Maintain it yourself first</h4><p>Run it personally so it survives infancy and proves value before you ask anyone to share the load.</p></div>
+          <div class="tstep"><div class="wk">WEEK 3–4</div><h4>Explain the why, then make it shared</h4><p>Once people feel the benefit, hand off ownership gradually. Adoption follows demonstrated value, not a mandate.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 RHYTHM -->
+    <section class="block" id="rhythm">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">10</span><h2>The default weekly rhythm</h2></div>
+        <p class="sec-intro">Once the mechanisms exist, this cadence keeps operational overload manageable week to week.</p>
+        <div class="matrix">
+          <div class="matrix-group">Weekly</div>
+          <div class="matrix-row"><div><div class="item">30-minute priorities sync</div><div class="sub">Confirm what matters, surface founder decisions</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div><div class="item">Async leadership update</div><div class="sub">Green / amber / red + one decision</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div><div class="item">Backlog refinement with engineering</div><div class="sub">Turn stories into sprint-ready work</div></div><span class="own-pill shared">BOTH</span></div>
+          <div class="matrix-group">Continuous</div>
+          <div class="matrix-row"><div><div class="item">Release posts in #releases</div><div class="sub">Per meaningful ship</div></div><span class="own-pill shared">ANY</span></div>
+          <div class="matrix-row"><div><div class="item">Decision log updated as decisions happen</div><div class="sub">Append-only, recoverable later</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-group">When needed</div>
+          <div class="matrix-row"><div><div class="item">Founder decision pull-in</div><div class="sub">When a tradeoff needs their call mid-week</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div><div class="item">ETA reconciliation</div><div class="sub">Whenever a date changes — before it goes external</div></div><span class="own-pill shared">BOTH</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 BACKLOG -->
+    <section class="block" id="backlog">
+      <div class="container">
+        <div class="sec-head"><span class="sec-num">11</span><h2>Backlog &amp; sequencing</h2></div>
+        <p class="sec-intro">Sequencing is a PM decision — but the estimate behind it is engineering's. The only way to sequence honestly is to get the estimate from the people doing the work.</p>
+
+        <h3 class="sub">The three-tier backlog</h3>
+        <div class="matrix">
+          <div class="matrix-group">Tier 1 — This week (sprint-ready)</div>
+          <div class="matrix-row"><div><div class="item">Fully refined stories with acceptance criteria</div><div class="sub">Engineering has estimated, dependencies are clear</div></div><span class="own-pill shared">BOTH</span></div>
+          <div class="matrix-row"><div><div class="item">Bugs with reproduction steps + priority label</div><div class="sub">P1 / P2 / P3 agreed with engineering lead</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-group">Tier 2 — Next 2 weeks (being refined)</div>
+          <div class="matrix-row"><div><div class="item">Stories written, not yet estimated</div><div class="sub">PM has written the "what"; engineering to add "how long"</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div><div class="item">Known dependencies flagged</div><div class="sub">Cross-team blockers noted before they surface mid-sprint</div></div><span class="own-pill shared">BOTH</span></div>
+          <div class="matrix-group">Tier 3 — Future (idea backlog)</div>
+          <div class="matrix-row"><div><div class="item">Problem statements, not solutions</div><div class="sub">Enough context to re-evaluate when priority shifts</div></div><span class="own-pill pm">PM</span></div>
+          <div class="matrix-row"><div><div class="item">No estimates until Tier 2</div><div class="sub">Estimating future items wastes engineering time and creates false precision</div></div><span class="own-pill pm">PM</span></div>
+        </div>
+
+        <div class="note"><b>Bug triage rule:</b> P1 = breaks core flow for users (fix this sprint). P2 = significant friction but workaround exists (fix next sprint). P3 = annoying but low impact (backlog). Agree these labels with engineering once — don't re-negotiate per bug.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// scroll-spy + nav active
+const sections = document.querySelectorAll('section.block, header.hero');
+const navLinks = document.querySelectorAll('.nav-link[data-to]');
+const prog = document.getElementById('tprog');
+
+navLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    const target = document.getElementById(link.dataset.to);
+    if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.toggle('active', l.dataset.to === e.target.id));
+    }
+  });
+}, {rootMargin:'-40% 0px -50% 0px'});
+
+sections.forEach(s => obs.observe(s));
+
+// read progress
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  const pct = total > 0 ? Math.round((window.scrollY / total) * 100) : 0;
+  if (prog) prog.textContent = pct + '% read';
+});
+
+// accordion — mechanism cards
+document.querySelectorAll('[data-mech] .mech-head').forEach(head => {
+  head.addEventListener('click', () => head.closest('[data-mech]').classList.toggle('open'));
+});
+
+// accordion — reframe cards
+document.querySelectorAll('.rf-head').forEach(head => {
+  head.addEventListener('click', () => head.closest('.rf').classList.toggle('open'));
+});
+
+// copy buttons
+document.querySelectorAll('[data-copy]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pre = btn.closest('.tpl').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1800);
+    });
+  });
+});
+</script>
+</body>
+</html>

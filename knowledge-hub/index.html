@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yezi's Knowledge Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400..900;1,400..900&family=Inter:wght@400..700&family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #fbeee0;
+    --cream-deep: #f7e3cf;
+    --paper: #ffffff;
+    --ink: #1c1814;
+    --ink-soft: #4a423a;
+    --muted: #8a7d70;
+    --faint: #b3a596;
+    --line: #1c1814;
+    --orange: #e8943a;
+    --orange-deep: #cf7d28;
+    --orange-soft: #fbe6cf;
+    --green: #4f9d6b;
+    --shadow: 6px 6px 0 var(--ink);
+    --shadow-sm: 3px 3px 0 var(--ink);
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    background: var(--cream-deep);
+    border-bottom: 2px solid var(--line);
+    padding: 40px 60px 36px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+  .brand-icon {
+    width: 52px;
+    height: 52px;
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .brand-text h1 {
+    font-family: "Caveat", cursive;
+    font-weight: 700;
+    font-size: 36px;
+    line-height: 1;
+    margin: 0;
+  }
+  .brand-text p {
+    font-family: "Archivo", sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-size: 11px;
+    color: var(--muted);
+    margin: 4px 0 0;
+  }
+  .header-desc {
+    max-width: 560px;
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin-top: 18px;
+  }
+
+  /* Main content */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 52px 60px 120px;
+  }
+
+  .section-label {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    font-size: 11px;
+    color: var(--faint);
+    margin-bottom: 18px;
+  }
+
+  /* Guide card grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 18px;
+  }
+
+  .guide-card {
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: 18px;
+    padding: 26px 24px 22px;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform .12s, box-shadow .12s;
+    cursor: pointer;
+  }
+  .guide-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow);
+  }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .card-icon {
+    width: 46px;
+    height: 46px;
+    background: var(--orange-soft);
+    border: 2px solid var(--line);
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .card-meta {
+    flex: 1;
+  }
+  .card-tag {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-size: 10px;
+    color: var(--orange-deep);
+    margin-bottom: 5px;
+  }
+  .card-title {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  .card-desc {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin: 0;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1.5px dashed #e3d2bd;
+    padding-top: 12px;
+    margin-top: 2px;
+  }
+  .card-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    background: var(--cream);
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 8px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .card-arrow {
+    font-size: 18px;
+    color: var(--orange);
+    font-weight: 700;
+  }
+
+  /* Empty state */
+  .coming-soon {
+    background: var(--cream-deep);
+    border: 2px dashed var(--faint);
+    border-radius: 18px;
+    padding: 32px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--muted);
+  }
+  .coming-soon .icon { font-size: 28px; opacity: .5; }
+  .coming-soon p { font-size: 14px; margin: 0; font-style: italic; }
+
+  @media (max-width: 680px) {
+    header { padding: 28px 22px 24px; }
+    main { padding: 36px 22px 80px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">📚</div>
+    <div class="brand-text">
+      <h1>Yezi's Knowledge Hub</h1>
+      <p>Guides · frameworks · working notes</p>
+    </div>
+  </div>
+  <p class="header-desc">A personal library of PM tools, frameworks, and operating guides — built to be opened, not just saved.</p>
+</header>
+
+<main>
+  <div class="section-label">All guides</div>
+  <div class="grid">
+
+    <!-- Card 1 — The Visibility Layer -->
+    <a class="guide-card" href="visibility-layer-pm-guide.html">
+      <div class="card-top">
+        <div class="card-icon">🔥</div>
+        <div class="card-meta">
+          <div class="card-tag">Product delivery · operating guide</div>
+          <div class="card-title">The Visibility Layer — A Startup PM Delivery Guide</div>
+        </div>
+      </div>
+      <p class="card-desc">Four lightweight mechanisms to fix information loss in early-stage teams: release log, decision log, weekly sync, and leadership update. Includes copy-ready templates and a full Slack + Notion + Linear integration playbook.</p>
+      <div class="card-footer">
+        <div class="card-chips">
+          <span class="chip">11 sections</span>
+          <span class="chip">Templates</span>
+          <span class="chip">Playbook</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- Placeholder for future guides -->
+    <div class="coming-soon">
+      <span class="icon">+</span>
+      <p>More guides coming — drop a new HTML asset here and add a card above.</p>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

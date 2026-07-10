@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Onboarding Pattern Library — 15 UX Patterns from 200+ Apps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400..900;1,400..900&family=Inter:wght@400..700&family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#fbeee0; --cream-deep:#f7e3cf; --paper:#ffffff;
+    --ink:#1c1814; --ink-soft:#4a423a; --muted:#8a7d70; --faint:#b3a596;
+    --orange:#e8943a; --orange-deep:#cf7d28; --orange-soft:#fbe6cf;
+    --green:#4f9d6b; --blue:#3f7fd6;
+    --shadow:6px 6px 0 var(--ink); --shadow-sm:3px 3px 0 var(--ink);
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{margin:0;line-height:1.1}
+
+  .topbar{background:var(--cream-deep);border-bottom:2px solid var(--ink);padding:14px 28px;
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+  .brand{display:flex;align-items:center;gap:9px}
+  .brand .fire{width:32px;height:32px;border:2px solid var(--ink);border-radius:9px;background:var(--paper);
+    display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--shadow-sm)}
+  .brand .name{font-family:"Caveat",cursive;font-weight:700;font-size:22px;line-height:1}
+  .brand .sub{font-family:"Archivo",sans-serif;font-style:italic;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9.5px;color:var(--muted);margin-top:1px}
+  .topbar .save{margin-left:auto;background:var(--paper);border:2px solid var(--ink);border-radius:99px;padding:8px 16px;font-weight:700;font-size:13px;box-shadow:var(--shadow-sm);cursor:pointer;color:var(--ink)}
+  .topbar .save:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+
+  .hero{max-width:1180px;margin:0 auto;padding:46px 28px 26px}
+  .pill-label{display:inline-flex;align-items:center;gap:8px;background:var(--orange-soft);border:2px solid var(--ink);border-radius:99px;padding:6px 15px;margin-bottom:20px;font-family:"Archivo",sans-serif;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.05em;font-size:11px;box-shadow:var(--shadow-sm)}
+  .pill-label .spark{color:var(--orange-deep)}
+  .hero h1{font-family:"Anton",sans-serif;font-weight:400;font-size:50px;line-height:1.02;letter-spacing:.004em;margin-bottom:16px;max-width:18ch}
+  .hero h1 .hl{color:var(--orange-deep)}
+  .hero p.lede{font-size:18px;color:var(--ink-soft);max-width:680px;line-height:1.55}
+  .hero p.lede b{color:var(--ink)}
+
+  .controls{max-width:1180px;margin:0 auto;padding:0 28px;position:sticky;top:61px;z-index:40;background:var(--cream);padding-top:14px;padding-bottom:14px;border-bottom:2px dashed #e3d2bd}
+  .search-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .search-row input{flex:1;min-width:220px;border:2px solid var(--ink);border-radius:11px;padding:11px 15px;font:inherit;font-size:15px;background:var(--paper);box-shadow:var(--shadow-sm)}
+  .search-row input:focus{outline:none;border-color:var(--orange-deep)}
+  .result-count{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .result-count b{color:var(--orange-deep)}
+  .filters{display:flex;gap:7px;flex-wrap:wrap}
+  .fbtn{font-family:"Archivo",sans-serif;font-weight:700;font-size:12px;border:2px solid var(--ink);background:var(--paper);color:var(--ink-soft);border-radius:99px;padding:5px 12px;cursor:pointer;transition:all .12s}
+  .fbtn:hover{background:var(--orange-soft)}
+  .fbtn.active{background:var(--orange);color:#fff;box-shadow:var(--shadow-sm)}
+
+  .grid{max-width:1180px;margin:0 auto;padding:24px 28px 90px;display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  .pcard{border:2px solid var(--ink);border-radius:16px;background:var(--paper);overflow:hidden;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;transition:transform .1s}
+  .pcard:hover{transform:translate(-2px,-2px);box-shadow:var(--shadow)}
+  .pcard.hidden{display:none}
+  .pcard-fig{background:var(--cream-deep);border-bottom:2px solid var(--ink);padding:16px;display:flex;align-items:center;justify-content:center}
+  .recreation{width:100%;height:auto;max-width:340px;border-radius:8px}
+  .pcard-body{padding:18px 20px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .pcard-head{display:flex;align-items:center;gap:10px}
+  .pnum{font-family:var(--mono);font-size:12px;color:#fff;background:var(--ink);border-radius:6px;padding:3px 8px;font-weight:600}
+  .pcard-head h3{font-family:"Anton",sans-serif;font-weight:400;font-size:22px;letter-spacing:.005em;flex:1}
+  .bonus-badge{font-family:var(--mono);font-size:9px;font-weight:600;color:#fff;background:var(--orange);border:1.5px solid var(--ink);border-radius:6px;padding:2px 7px}
+  .pdef{font-size:14px;color:var(--ink-soft);margin:0}
+  .pmeta{display:grid;grid-template-columns:84px 1fr;gap:10px;font-size:12.5px}
+  .pmeta .mk{font-family:"Archivo",sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:9.5px;color:var(--orange-deep);padding-top:2px}
+  .pmeta span:last-child{color:var(--ink-soft)}
+  .ptags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .ptag{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--ink-soft);background:var(--cream);border:1.5px solid var(--line,#d8c8af);border-radius:6px;padding:2px 8px}
+
+  .no-results{grid-column:1/-1;text-align:center;color:var(--muted);padding:50px 20px;font-size:15px}
+
+  footer{max-width:1180px;margin:0 auto;padding:0 28px 70px}
+  .note{background:var(--orange-soft);border:2px solid var(--ink);border-radius:14px;padding:16px 20px;font-size:14px;color:var(--ink-soft);box-shadow:var(--shadow-sm)}
+  .note b{color:var(--orange-deep)}
+  .sources{font-size:12px;color:var(--muted);border-top:2px dashed #e3d2bd;padding-top:16px;margin-top:22px}
+  .sources b{color:var(--ink-soft)}
+
+  @media(max-width:780px){
+    .grid{grid-template-columns:1fr}
+    .hero h1{font-size:34px}
+    .controls{top:59px}
+  }
+  @media print{
+    .topbar,.controls,.save{display:none!important}
+    .pcard{box-shadow:none;break-inside:avoid}
+    .grid{grid-template-columns:1fr 1fr}
+    .pcard.hidden{display:flex!important}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><div class="fire">🔥</div><div><div class="name">Onboarding Patterns</div><div class="sub">15 UX patterns · searchable library</div></div></div>
+    <button class="save" onclick="window.print()">Save &amp; export</button>
+  </div>
+
+  <header class="hero">
+    <div class="pill-label"><span class="spark">✦</span> From 200+ of the world's best app flows</div>
+    <h1>The onboarding pattern <span class="hl">library.</span></h1>
+    <p class="lede">Fifteen onboarding design patterns, each with what it is, when to use it, the UI elements it needs, real app examples, and a hand-drawn recreation. <b>Search or filter by app type</b> to find the patterns that fit what you're building.</p>
+  </header>
+
+  <div class="controls">
+    <div class="search-row">
+      <input id="search" type="text" placeholder="Search patterns, UI elements, examples… (e.g. 'checklist', 'video', 'streak')" />
+      <span class="result-count"><b id="rcount">15</b> / 15 patterns</span>
+    </div>
+    <div class="filters" id="filters"><button class="fbtn active" data-tag="all">All</button><button class="fbtn" data-tag="analytics">Analytics</button><button class="fbtn" data-tag="collab">Collaboration</button><button class="fbtn" data-tag="complex">Complex</button><button class="fbtn" data-tag="creative">Creative</button><button class="fbtn" data-tag="data">Data</button><button class="fbtn" data-tag="design">Design</button><button class="fbtn" data-tag="ecommerce">E-commerce</button><button class="fbtn" data-tag="editing">Editing</button><button class="fbtn" data-tag="education">Education</button><button class="fbtn" data-tag="enterprise">Enterprise</button><button class="fbtn" data-tag="finance">Finance</button><button class="fbtn" data-tag="fitness">Fitness</button><button class="fbtn" data-tag="habit">Habit</button><button class="fbtn" data-tag="hr">HR</button><button class="fbtn" data-tag="learning">Learning</button><button class="fbtn" data-tag="media">Media</button><button class="fbtn" data-tag="pm">Project mgmt</button><button class="fbtn" data-tag="productivity">Productivity</button><button class="fbtn" data-tag="saas">SaaS</button><button class="fbtn" data-tag="setup">Setup-heavy</button><button class="fbtn" data-tag="social">Social</button><button class="fbtn" data-tag="streaming">Streaming</button><button class="fbtn" data-tag="support">Support</button><button class="fbtn" data-tag="ugc">User content</button><button class="fbtn" data-tag="website">Website</button></div>
+  </div>
+
+  <main class="grid" id="grid">
+    <article class="pcard" data-tags="productivity creative saas" data-search="first look a welcome modal—slides or a highlight-reel video—shown the first time a user signs up or logs in, sitting on top of a dimmed app to give a high-level overview. great when users need a bird&#x27;s-eye view of a workspace before diving in. title · close button · dimmed backdrop · slides with dots/progress · next button · optional embedded video. intercom (carousel), matter (storyboard), amplitude (video), slack, notion, canva, hubspot. productivity creative saas">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="0" y="0" width="320" height="180" fill="#f7e3cf"/><rect x="0" y="0" width="320" height="180" fill="#1c1814" opacity="0.30"/><rect x="60" y="34" width="200" height="118" rx="14" fill="#ffffff" stroke="#1c1814" stroke-width="2.5"/><rect x="76" y="50" width="168" height="52" rx="8" fill="#fbe6cf" stroke="#1c1814" stroke-width="1.5"/><polygon points="150,64 168,76 150,88" fill="#cf7d28"/><rect x="76" y="112" width="120" height="7" rx="3.5" fill="#1c1814"/><rect x="76" y="124" width="150" height="5" rx="2.5" fill="#8a7d70"/><circle cx="150" cy="140" r="3" fill="#e8943a"/><circle cx="162" cy="140" r="3" fill="#d8c8af"/><circle cx="174" cy="140" r="3" fill="#d8c8af"/><rect x="208" y="132" width="36" height="15" rx="7.5" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><text x="244" y="46" font-size="13" fill="#1c1814" text-anchor="end" font-family="monospace">✕</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">01</span><h3>First Look</h3></div>
+        <p class="pdef">A welcome modal—slides or a highlight-reel video—shown the first time a user signs up or logs in, sitting on top of a dimmed app to give a high-level overview.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Great when users need a bird&#x27;s-eye view of a workspace before diving in.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Title · close button · dimmed backdrop · slides with dots/progress · next button · optional embedded video.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Intercom (carousel), Matter (storyboard), Amplitude (video), Slack, Notion, Canva, HubSpot.</span></div>
+        <div class="ptags"><span class="ptag">Productivity</span><span class="ptag">Creative</span><span class="ptag">SaaS</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="analytics saas pm" data-search="product tour a step-by-step guided walkthrough that points out core features via overlays and popups, moving the user around the interface in a set sequence. best for feature-rich or data-heavy platforms that would overwhelm a cold-start user. sequential overlays · highlighted regions · tooltips/carousel · &#x27;step x of n&#x27; · next button. intercom, google analytics, amplitude, asana, clickup, salesforce. analytics saas project mgmt">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#fbeee0" stroke="#1c1814" stroke-width="2"/><rect x="20" y="20" width="60" height="140" rx="6" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><rect x="92" y="20" width="208" height="22" rx="5" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><rect x="28" y="40" width="44" height="9" rx="4" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="120" y="64" width="120" height="40" rx="8" fill="#1c1814"/><text x="132" y="82" font-size="9" fill="#f0e6d6" font-family="monospace">This is your sidebar</text><text x="132" y="95" font-size="8" fill="#e8943a" font-family="monospace">Step 1 of 4 ›</text><polygon points="120,84 108,90 120,96" fill="#1c1814"/></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">02</span><h3>Product Tour</h3></div>
+        <p class="pdef">A step-by-step guided walkthrough that points out core features via overlays and popups, moving the user around the interface in a set sequence.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Best for feature-rich or data-heavy platforms that would overwhelm a cold-start user.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Sequential overlays · highlighted regions · tooltips/carousel · &#x27;Step X of N&#x27; · next button.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Intercom, Google Analytics, Amplitude, Asana, ClickUp, Salesforce.</span></div>
+        <div class="ptags"><span class="ptag">Analytics</span><span class="ptag">SaaS</span><span class="ptag">Project mgmt</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="creative website saas" data-search="walkthrough beacons glowing, pulsating indicators placed in the ui that the user can choose to click—drawing attention without forcing a walkthrough. when you want gentle, optional nudges that never lock the app down. small pulsating dot · subtle animation · popover tooltip with a brief message · resumable position. simple (website builder), webflow, figma, canva, shopify, squarespace. creative website saas">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#fbeee0" stroke="#1c1814" stroke-width="2"/><rect x="24" y="28" width="120" height="60" rx="8" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><rect x="24" y="100" width="260" height="52" rx="8" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><circle cx="200" cy="58" r="18" fill="#e8943a" opacity="0.25"/><circle cx="200" cy="58" r="10" fill="#e8943a" opacity="0.45"/><circle cx="200" cy="58" r="5" fill="#cf7d28" stroke="#1c1814" stroke-width="1.5"/><rect x="218" y="44" width="78" height="30" rx="7" fill="#1c1814"/><text x="226" y="56" font-size="8" fill="#f0e6d6" font-family="monospace">New! Try this</text><text x="226" y="67" font-size="7.5" fill="#e8943a" font-family="monospace">click to explore</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">03</span><h3>Walkthrough Beacons</h3></div>
+        <p class="pdef">Glowing, pulsating indicators placed in the UI that the user can choose to click—drawing attention without forcing a walkthrough.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>When you want gentle, optional nudges that never lock the app down.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Small pulsating dot · subtle animation · popover tooltip with a brief message · resumable position.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Simple (website builder), Webflow, Figma, Canva, Shopify, Squarespace.</span></div>
+        <div class="ptags"><span class="ptag">Creative</span><span class="ptag">Website</span><span class="ptag">SaaS</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="productivity pm ugc" data-search="empty state an illustration plus instructions shown where there&#x27;s no content yet, with a call-to-action that launches the user into their first task. anywhere the product depends on user-generated content and the canvas starts blank. illustration · short instructions · primary cta button to create the first item. tally (forms), trello, notion, todoist, monday, pinterest. productivity project mgmt user content">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="120" y="34" width="80" height="56" rx="8" fill="none" stroke="#d8c8af" stroke-width="2" stroke-dasharray="6 5"/><circle cx="160" cy="55" r="9" fill="none" stroke="#8a7d70" stroke-width="2"/><path d="M148 76 l10 -12 8 9 6 -7 8 10" fill="none" stroke="#8a7d70" stroke-width="2" stroke-linejoin="round"/><rect x="96" y="104" width="128" height="8" rx="4" fill="#1c1814"/><rect x="110" y="120" width="100" height="5" rx="2.5" fill="#8a7d70"/><rect x="120" y="134" width="80" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="2"/><text x="160" y="148" font-size="9" fill="#fff" text-anchor="middle" font-family="monospace">+ Create first</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">04</span><h3>Empty State</h3></div>
+        <p class="pdef">An illustration plus instructions shown where there&#x27;s no content yet, with a call-to-action that launches the user into their first task.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Anywhere the product depends on user-generated content and the canvas starts blank.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Illustration · short instructions · primary CTA button to create the first item.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Tally (forms), Trello, Notion, Todoist, Monday, Pinterest.</span></div>
+        <div class="ptags"><span class="ptag">Productivity</span><span class="ptag">Project mgmt</span><span class="ptag">User content</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="social media streaming" data-search="personalization a quick capture of user preferences—topics, interests, categories—so the product can tailor the experience from the first session. when you want to show users only what matters to them on arrival. selection chips · checkboxes/dropdowns · sliders/toggles · progress bar · optional avatar setup. reddit (interest chips), tiktok, news aggregators, streaming apps. social media streaming">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="24" y="22" width="150" height="9" rx="4" fill="#1c1814"/><text x="24" y="30" font-size="0" fill="none"></text><rect x="24" y="44" width="58" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="90" y="44" width="70" height="20" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="170" y="44" width="60" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="240" y="44" width="52" height="20" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="24" y="72" width="72" height="20" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="106" y="72" width="56" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="172" y="72" width="66" height="20" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="248" y="72" width="44" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="24" y="100" width="60" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="94" y="100" width="64" height="20" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="168" y="100" width="54" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><rect x="232" y="100" width="60" height="20" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="100" y="134" width="120" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="2"/><text x="160" y="148" font-size="9" fill="#fff" text-anchor="middle" font-family="monospace">Continue ›</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">05</span><h3>Personalization</h3></div>
+        <p class="pdef">A quick capture of user preferences—topics, interests, categories—so the product can tailor the experience from the first session.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>When you want to show users only what matters to them on arrival.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Selection chips · checkboxes/dropdowns · sliders/toggles · progress bar · optional avatar setup.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Reddit (interest chips), TikTok, news aggregators, streaming apps.</span></div>
+        <div class="ptags"><span class="ptag">Social</span><span class="ptag">Media</span><span class="ptag">Streaming</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="saas productivity setup" data-search="checklist a simple list of setup tasks the user completes, each checking off with visible progress as they go. setup-heavy products where getting to value needs several concrete steps. task rows · checkboxes · progress bar/percentage · action link per item. front (setup guide), quickbooks, slack, shopify, crm onboarding. saas productivity setup-heavy">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="28" y="22" width="120" height="8" rx="4" fill="#1c1814"/><rect x="220" y="22" width="72" height="9" rx="4.5" fill="#fbe6cf" stroke="#1c1814" stroke-width="1"/><rect x="220" y="22" width="48" height="9" rx="4.5" fill="#e8943a"/><rect x="28" y="46" width="16" height="16" rx="4" fill="#4f9d6b" stroke="#1c1814" stroke-width="1.5"/><path d="M31 54 l3 4 6 -7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="54" y="51" width="150" height="7" rx="3.5" fill="#1c1814"/><rect x="28" y="74" width="16" height="16" rx="4" fill="#4f9d6b" stroke="#1c1814" stroke-width="1.5"/><path d="M31 82 l3 4 6 -7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="54" y="79" width="120" height="7" rx="3.5" fill="#1c1814"/><rect x="28" y="102" width="16" height="16" rx="4" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="54" y="107" width="170" height="7" rx="3.5" fill="#8a7d70"/><rect x="28" y="130" width="16" height="16" rx="4" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="54" y="135" width="140" height="7" rx="3.5" fill="#8a7d70"/></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">06</span><h3>Checklist</h3></div>
+        <p class="pdef">A simple list of setup tasks the user completes, each checking off with visible progress as they go.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Setup-heavy products where getting to value needs several concrete steps.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Task rows · checkboxes · progress bar/percentage · action link per item.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Front (setup guide), QuickBooks, Slack, Shopify, CRM onboarding.</span></div>
+        <div class="ptags"><span class="ptag">SaaS</span><span class="ptag">Productivity</span><span class="ptag">Setup-heavy</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="productivity saas collab" data-search="action-oriented like a checklist, but each step prompts a real key action—do the thing, not just read about it—often with a success/celebration moment. when a primary action is the fastest path to the product&#x27;s &#x27;aha&#x27; value. bold cta · direct &#x27;do this now&#x27; language · in-context nudges · completion celebration. copilot (create a test client), google docs, dropbox paper, loom, grammarly. productivity saas collaboration">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="28" y="26" width="180" height="9" rx="4" fill="#1c1814"/><rect x="28" y="44" width="240" height="6" rx="3" fill="#8a7d70"/><rect x="28" y="74" width="264" height="44" rx="10" fill="#fbe6cf" stroke="#1c1814" stroke-width="2"/><text x="44" y="92" font-size="10" fill="#1c1814" font-family="monospace" font-weight="bold">Create a test client</text><text x="44" y="106" font-size="8" fill="#8a7d70" font-family="monospace">Do it now to finish setup</text><rect x="200" y="84" width="76" height="24" rx="12" fill="#e8943a" stroke="#1c1814" stroke-width="2"/><text x="238" y="100" font-size="9" fill="#fff" text-anchor="middle" font-family="monospace">Start →</text><text x="28" y="142" font-size="9" fill="#4f9d6b" font-family="monospace">✓ Nicely done!</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">07</span><h3>Action-Oriented</h3></div>
+        <p class="pdef">Like a checklist, but each step prompts a real key action—do the thing, not just read about it—often with a success/celebration moment.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>When a primary action is the fastest path to the product&#x27;s &#x27;aha&#x27; value.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Bold CTA · direct &#x27;do this now&#x27; language · in-context nudges · completion celebration.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Copilot (create a test client), Google Docs, Dropbox Paper, Loom, Grammarly.</span></div>
+        <div class="ptags"><span class="ptag">Productivity</span><span class="ptag">SaaS</span><span class="ptag">Collaboration</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="learning fitness habit" data-search="goal setting helps users define a goal (e.g. a weekly target) and track progress, encouraging them to keep a streak. products that rely on repeated usage and where success is measurable over time. goal selector (dropdown/survey) · streak counter · progress visualization · gamified steps. duolingo, fitness &amp; wellness apps, habit trackers, personal development. learning fitness habit">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="28" y="22" width="160" height="9" rx="4" fill="#1c1814"/><rect x="28" y="44" width="44" height="30" rx="7" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><text x="50" y="63" font-size="11" fill="#1c1814" text-anchor="middle" font-family="monospace">5m</text><rect x="80" y="44" width="44" height="30" rx="7" fill="#e8943a" stroke="#1c1814" stroke-width="2"/><text x="102" y="63" font-size="11" fill="#fff" text-anchor="middle" font-family="monospace">10m</text><rect x="132" y="44" width="44" height="30" rx="7" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><text x="154" y="63" font-size="11" fill="#1c1814" text-anchor="middle" font-family="monospace">15m</text><rect x="184" y="44" width="44" height="30" rx="7" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><text x="206" y="63" font-size="11" fill="#1c1814" text-anchor="middle" font-family="monospace">20m</text><text x="28" y="100" font-size="9" fill="#8a7d70" font-family="monospace">Daily goal · streak</text><circle cx="40" cy="124" r="9" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><text x="40" y="128" font-size="9" text-anchor="middle">🔥</text><circle cx="70" cy="124" r="9" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><text x="70" y="128" font-size="9" text-anchor="middle">🔥</text><circle cx="100" cy="124" r="9" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><text x="100" y="128" font-size="9" text-anchor="middle">🔥</text><circle cx="130" cy="124" r="9" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><text x="130" y="128" font-size="9" text-anchor="middle"></text><circle cx="160" cy="124" r="9" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><text x="160" y="128" font-size="9" text-anchor="middle"></text><circle cx="190" cy="124" r="9" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><text x="190" y="128" font-size="9" text-anchor="middle"></text><circle cx="220" cy="124" r="9" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><text x="220" y="128" font-size="9" text-anchor="middle"></text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">08</span><h3>Goal Setting</h3></div>
+        <p class="pdef">Helps users define a goal (e.g. a weekly target) and track progress, encouraging them to keep a streak.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Products that rely on repeated usage and where success is measurable over time.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Goal selector (dropdown/survey) · streak counter · progress visualization · gamified steps.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Duolingo, fitness &amp; wellness apps, habit trackers, personal development.</span></div>
+        <div class="ptags"><span class="ptag">Learning</span><span class="ptag">Fitness</span><span class="ptag">Habit</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="creative design saas" data-search="coach marks small pointers or highlights on buttons/sections—like digital sticky notes—offering a short explanation when (and if) the user needs it. surfacing help the first time a feature is explored, not just at first login—&#x27;nurturing onboarding over time.&#x27; pointer/tooltip on an element · short description · sometimes a do-it-to-dismiss step. canva (text tool), photoshop, design tools that ship new features regularly. creative design saas">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#fbeee0" stroke="#1c1814" stroke-width="2"/><rect x="24" y="24" width="40" height="20" rx="5" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><rect x="72" y="24" width="40" height="20" rx="5" fill="#fbe6cf" stroke="#1c1814" stroke-width="2"/><text x="92" y="38" font-size="9" fill="#1c1814" text-anchor="middle" font-family="monospace">T</text><rect x="120" y="24" width="40" height="20" rx="5" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><rect x="64" y="58" width="150" height="46" rx="9" fill="#1c1814"/><polygon points="92,58 100,50 108,58" fill="#1c1814"/><text x="76" y="76" font-size="9" fill="#f0e6d6" font-family="monospace">Add text here</text><text x="76" y="90" font-size="8" fill="#e8943a" font-family="monospace">Try it once to dismiss</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">09</span><h3>Coach Marks</h3></div>
+        <p class="pdef">Small pointers or highlights on buttons/sections—like digital sticky notes—offering a short explanation when (and if) the user needs it.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Surfacing help the first time a feature is explored, not just at first login—&#x27;nurturing onboarding over time.&#x27;</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Pointer/tooltip on an element · short description · sometimes a do-it-to-dismiss step.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Canva (text tool), Photoshop, design tools that ship new features regularly.</span></div>
+        <div class="ptags"><span class="ptag">Creative</span><span class="ptag">Design</span><span class="ptag">SaaS</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="analytics creative editing" data-search="demo content a sample dataset or demo project users can play with to feel how the workspace works—without creating anything from scratch. helps visual learners and tools where a blank start is intimidating. pre-loaded sample project · &#x27;demo&#x27; label · fully interactive sandbox content. frame.io (demo project), data-analytics tools, video editors. analytics creative editing">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="24" y="22" width="120" height="9" rx="4" fill="#1c1814"/><rect x="206" y="20" width="86" height="16" rx="8" fill="#fbe6cf" stroke="#1c1814" stroke-width="1.5"/><text x="249" y="32" font-size="8" fill="#cf7d28" text-anchor="middle" font-family="monospace">DEMO PROJECT</text><rect x="28" y="48" width="78" height="100" rx="8" fill="#fbeee0" stroke="#1c1814" stroke-width="1.5"/><rect x="36" y="58" width="62" height="34" rx="5" fill="#fbe6cf" stroke="#d8c8af" stroke-width="1"/><rect x="36" y="100" width="50" height="6" rx="3" fill="#1c1814"/><rect x="36" y="112" width="40" height="5" rx="2.5" fill="#8a7d70"/><rect x="118" y="48" width="78" height="100" rx="8" fill="#fbeee0" stroke="#1c1814" stroke-width="1.5"/><rect x="126" y="58" width="62" height="34" rx="5" fill="#dce8f5" stroke="#d8c8af" stroke-width="1"/><rect x="126" y="100" width="50" height="6" rx="3" fill="#1c1814"/><rect x="126" y="112" width="40" height="5" rx="2.5" fill="#8a7d70"/><rect x="208" y="48" width="78" height="100" rx="8" fill="#fbeee0" stroke="#1c1814" stroke-width="1.5"/><rect x="216" y="58" width="62" height="34" rx="5" fill="#e3f1e9" stroke="#d8c8af" stroke-width="1"/><rect x="216" y="100" width="50" height="6" rx="3" fill="#1c1814"/><rect x="216" y="112" width="40" height="5" rx="2.5" fill="#8a7d70"/></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">10</span><h3>Demo Content</h3></div>
+        <p class="pdef">A sample dataset or demo project users can play with to feel how the workspace works—without creating anything from scratch.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Helps visual learners and tools where a blank start is intimidating.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Pre-loaded sample project · &#x27;demo&#x27; label · fully interactive sandbox content.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Frame.io (demo project), data-analytics tools, video editors.</span></div>
+        <div class="ptags"><span class="ptag">Analytics</span><span class="ptag">Creative</span><span class="ptag">Editing</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="support saas collab" data-search="simulation an interactive or recorded demonstration of the product working under realistic conditions—a private &#x27;playground&#x27; that mirrors what end-users will see. complex products the customer must configure for their own users. realistic recreation of the live experience · clear &#x27;tutorial/testing mode&#x27; framing · guidance. intercom (try the messenger), zendesk, zoom, slack, salesforce. support saas collaboration">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#211b14" stroke="#1c1814" stroke-width="2"/><rect x="20" y="20" width="120" height="14" rx="7" fill="#e8943a"/><text x="28" y="30" font-size="8" fill="#1c1814" font-family="monospace">TUTORIAL MODE</text><rect x="20" y="44" width="150" height="22" rx="11" fill="#33291d"/><text x="30" y="58" font-size="8" fill="#f0e6d6" font-family="monospace">Hi! How can I help?</text><rect x="130" y="74" width="170" height="22" rx="11" fill="#e8943a"/><text x="142" y="88" font-size="8" fill="#1c1814" font-family="monospace">Testing my chatbot…</text><rect x="20" y="104" width="200" height="22" rx="11" fill="#33291d"/><text x="30" y="118" font-size="8" fill="#f0e6d6" font-family="monospace">Looks like it works! 🎉</text><rect x="20" y="134" width="280" height="20" rx="10" fill="#2a2118" stroke="#4a3c28" stroke-width="1"/><text x="32" y="147" font-size="8" fill="#8a7d70" font-family="monospace">Type a test message…</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">11</span><h3>Simulation</h3></div>
+        <p class="pdef">An interactive or recorded demonstration of the product working under realistic conditions—a private &#x27;playground&#x27; that mirrors what end-users will see.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Complex products the customer must configure for their own users.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Realistic recreation of the live experience · clear &#x27;tutorial/testing mode&#x27; framing · guidance.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Intercom (try the messenger), Zendesk, Zoom, Slack, Salesforce.</span></div>
+        <div class="ptags"><span class="ptag">Support</span><span class="ptag">SaaS</span><span class="ptag">Collaboration</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="productivity enterprise education" data-search="self-segmentation asks the user to pick a path or user type (&#x27;i&#x27;m a teacher / a student&#x27;) so the rest of onboarding can be tailored to them. products serving multiple distinct audiences or use cases. choice screen · visual cards or dropdown · loads tailored templates/content after selection. notion (use-case cards), hubspot, mailchimp, multi-purpose tools. productivity enterprise education">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="80" y="22" width="160" height="9" rx="4" fill="#1c1814"/><rect x="24" y="50" width="76" height="92" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><text x="62" y="92" font-size="22" text-anchor="middle">🎓</text><text x="62" y="120" font-size="9" fill="#1c1814" text-anchor="middle" font-family="monospace">Student</text><rect x="110" y="50" width="76" height="92" rx="10" fill="#fbe6cf" stroke="#1c1814" stroke-width="2.5"/><text x="148" y="92" font-size="22" text-anchor="middle">💼</text><text x="148" y="120" font-size="9" fill="#1c1814" text-anchor="middle" font-family="monospace">Work</text><rect x="220" y="50" width="76" height="92" rx="10" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><text x="258" y="92" font-size="22" text-anchor="middle">🏠</text><text x="258" y="120" font-size="9" fill="#1c1814" text-anchor="middle" font-family="monospace">Personal</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">12</span><h3>Self-Segmentation</h3></div>
+        <p class="pdef">Asks the user to pick a path or user type (&#x27;I&#x27;m a teacher / a student&#x27;) so the rest of onboarding can be tailored to them.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Products serving multiple distinct audiences or use cases.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Choice screen · visual cards or dropdown · loads tailored templates/content after selection.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Notion (use-case cards), HubSpot, MailChimp, multi-purpose tools.</span></div>
+        <div class="ptags"><span class="ptag">Productivity</span><span class="ptag">Enterprise</span><span class="ptag">Education</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="saas data complex" data-search="contextual tooltips popup tips that appear exactly when a user hovers/clicks something needing explanation—shown at the moment of need, only inside specific workflows. complex tools with hidden or secondary features that shouldn&#x27;t clutter the default view. small boxes with a sentence or two · arrow/pointer · sometimes inside flow-specific ui. trello, airtable, data-visualization dashboards. saas data complex">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#fbeee0" stroke="#1c1814" stroke-width="2"/><rect x="20" y="24" width="280" height="40" rx="8" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><rect x="32" y="36" width="60" height="16" rx="8" fill="#fbe6cf" stroke="#1c1814" stroke-width="1.5"/><rect x="100" y="36" width="60" height="16" rx="8" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><circle cx="270" cy="44" r="9" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/><text x="270" y="48" font-size="11" fill="#fff" text-anchor="middle" font-family="monospace">?</text><rect x="150" y="80" width="150" height="40" rx="9" fill="#1c1814"/><polygon points="262,80 270,72 278,80" fill="#1c1814"/><text x="162" y="98" font-size="8.5" fill="#f0e6d6" font-family="monospace">Appears only when</text><text x="162" y="110" font-size="8.5" fill="#f0e6d6" font-family="monospace">you’re in this flow</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">13</span><h3>Contextual Tooltips</h3></div>
+        <p class="pdef">Popup tips that appear exactly when a user hovers/clicks something needing explanation—shown at the moment of need, only inside specific workflows.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Complex tools with hidden or secondary features that shouldn&#x27;t clutter the default view.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Small boxes with a sentence or two · arrow/pointer · sometimes inside flow-specific UI.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Trello, Airtable, data-visualization dashboards.</span></div>
+        <div class="ptags"><span class="ptag">SaaS</span><span class="ptag">Data</span><span class="ptag">Complex</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="creative saas editing" data-search="just-in-time modal a modal that appears exactly when relevant—deeper than a tooltip—when someone does something for the first time that needs a bigger explanation or choice. first-time multi-step actions (e.g. exporting) where the user needs to choose among options. contextual modal · option list/setup prompt · short coaching · first-time trigger. miro &amp; canva (export image options). creative saas editing">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="0" y="0" width="320" height="180" fill="#f7e3cf"/><rect x="0" y="0" width="320" height="180" fill="#1c1814" opacity="0.28"/><rect x="70" y="36" width="180" height="112" rx="14" fill="#ffffff" stroke="#1c1814" stroke-width="2.5"/><text x="86" y="60" font-size="10" fill="#1c1814" font-family="monospace" font-weight="bold">Export image</text><rect x="86" y="72" width="148" height="22" rx="7" fill="#fbe6cf" stroke="#1c1814" stroke-width="1.5"/><text x="96" y="86" font-size="8.5" fill="#1c1814" font-family="monospace">◉ High-res PNG</text><rect x="86" y="100" width="148" height="22" rx="7" fill="#ffffff" stroke="#d8c8af" stroke-width="1.5"/><text x="96" y="114" font-size="8.5" fill="#8a7d70" font-family="monospace">○ Export a frame</text><rect x="178" y="128" width="56" height="14" rx="7" fill="#e8943a" stroke="#1c1814" stroke-width="1.5"/></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">14</span><h3>Just-In-Time Modal</h3></div>
+        <p class="pdef">A modal that appears exactly when relevant—deeper than a tooltip—when someone does something for the first time that needs a bigger explanation or choice.</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>First-time multi-step actions (e.g. exporting) where the user needs to choose among options.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Contextual modal · option list/setup prompt · short coaching · first-time trigger.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Miro &amp; Canva (export image options).</span></div>
+        <div class="ptags"><span class="ptag">Creative</span><span class="ptag">SaaS</span><span class="ptag">Editing</span></div>
+      </div>
+    </article>
+    <article class="pcard" data-tags="finance hr ecommerce" data-search="information gathering front-loaded collection of the info a product needs to function—often legally required—frequently combined with other patterns. (bonus pattern.) apps that can&#x27;t deliver value without extensive setup or third-party connections. multi-step forms · security/legal fields · account/bank linking · progress indicator. acorns (investor profile, bank link), accounting/finance, hr, etsy personalization. finance hr e-commerce">
+      <div class="pcard-fig"><svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="recreation"><rect x="8" y="8" width="304" height="164" rx="12" fill="#ffffff" stroke="#1c1814" stroke-width="2"/><rect x="28" y="20" width="140" height="9" rx="4" fill="#1c1814"/><rect x="220" y="20" width="72" height="8" rx="4" fill="#fbe6cf" stroke="#1c1814" stroke-width="1"/><rect x="220" y="20" width="30" height="8" rx="4" fill="#e8943a"/><rect x="28" y="50" width="80" height="7" rx="3.5" fill="#8a7d70"/><rect x="120" y="44" width="172" height="18" rx="6" fill="#fbe6cf" stroke="#1c1814" stroke-width="1.5"/><rect x="28" y="78" width="80" height="7" rx="3.5" fill="#8a7d70"/><rect x="120" y="72" width="172" height="18" rx="6" fill="#fbe6cf" stroke="#1c1814" stroke-width="1.5"/><rect x="28" y="106" width="80" height="7" rx="3.5" fill="#8a7d70"/><rect x="120" y="100" width="172" height="18" rx="6" fill="#ffffff" stroke="#1c1814" stroke-width="1.5"/><rect x="120" y="128" width="80" height="20" rx="10" fill="#e8943a" stroke="#1c1814" stroke-width="2"/><text x="160" y="142" font-size="9" fill="#fff" text-anchor="middle" font-family="monospace">Next step →</text></svg></div>
+      <div class="pcard-body">
+        <div class="pcard-head"><span class="pnum">15</span><h3>Information Gathering</h3><span class="bonus-badge">BONUS</span></div>
+        <p class="pdef">Front-loaded collection of the info a product needs to function—often legally required—frequently combined with other patterns. (Bonus pattern.)</p>
+        <div class="pmeta"><span class="mk">Best for</span><span>Apps that can&#x27;t deliver value without extensive setup or third-party connections.</span></div>
+        <div class="pmeta"><span class="mk">UI elements</span><span>Multi-step forms · security/legal fields · account/bank linking · progress indicator.</span></div>
+        <div class="pmeta"><span class="mk">Examples</span><span>Acorns (investor profile, bank link), accounting/finance, HR, Etsy personalization.</span></div>
+        <div class="ptags"><span class="ptag">Finance</span><span class="ptag">HR</span><span class="ptag">E-commerce</span></div>
+      </div>
+    </article>
+    <div class="no-results" id="noResults" style="display:none">No patterns match — try a different term or clear the filter.</div>
+  </main>
+
+  <footer>
+    <div class="note"><b>How to use this:</b> these patterns combine. A great flow might pair self-segmentation → personalization → a checklist → contextual tooltips over time. The real skill is knowing <em>when</em> each fits your users and your product type — start from the filter, then mix.</div>
+    <div class="sources"><b>Source:</b> synthesized from a two-part YouTube series analyzing 200+ onboarding flows from leading apps. The visual recreations are original campfire-style illustrations of each pattern (not screenshots), so the library is fully self-contained and reproduces no app UI. App names are cited as real-world examples of each pattern.</div>
+  </footer>
+
+<script>
+  const cards=[...document.querySelectorAll('.pcard')];
+  const search=document.getElementById('search');
+  const rcount=document.getElementById('rcount');
+  const noResults=document.getElementById('noResults');
+  const fbtns=[...document.querySelectorAll('.fbtn')];
+  let activeTag='all';
+
+  function apply(){
+    const q=search.value.trim().toLowerCase();
+    let shown=0;
+    cards.forEach(c=>{
+      const tagOk = activeTag==='all' || c.dataset.tags.split(' ').includes(activeTag);
+      const qOk = !q || c.dataset.search.includes(q);
+      const vis = tagOk && qOk;
+      c.classList.toggle('hidden',!vis);
+      if(vis) shown++;
+    });
+    rcount.textContent=shown;
+    noResults.style.display = shown? 'none':'block';
+  }
+  search.addEventListener('input',apply);
+  fbtns.forEach(b=>b.addEventListener('click',()=>{
+    activeTag=b.dataset.tag;
+    fbtns.forEach(x=>x.classList.toggle('active',x===b));
+    apply();
+  }));
+  apply();
+</script>
+</body>
+</html>
