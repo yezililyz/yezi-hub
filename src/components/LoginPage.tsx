@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, addDoc } from 'firebase/firestore'
-import { sendSignInLinkToEmail } from 'firebase/auth'
 import { auth, db, ADMIN_EMAIL } from '../firebase'
+import { sendMagicLink } from '../sendMagicLink'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -43,9 +43,11 @@ export default function LoginPage() {
       }
       localStorage.setItem('emailForSignIn', email.trim())
       if (name.trim()) localStorage.setItem('nameForSignIn', name.trim())
-      await sendSignInLinkToEmail(auth, email.trim(), {
+      await sendMagicLink(email.trim(), {
         url: window.location.origin + '/',
-        handleCodeInApp: true,
+        lang,
+        name: name.trim(),
+        mode: authMode,
       })
       setSent(true)
     } catch (err: any) {

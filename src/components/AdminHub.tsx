@@ -77,6 +77,14 @@ interface LinkList {
   items: LinkItem[]
 }
 
+interface Subscriber {
+  id: string
+  name: string
+  email: string
+  guideId: string | null
+  signedUpAt: string
+}
+
 interface ParsedMeta {
   title: string
   description: string
@@ -1384,6 +1392,8 @@ function findDuplicateGuideGroups(guides: Guide[]): DuplicateGroup[] {
 export default function AdminHub() {
   const [guides, setGuides] = useState<Guide[]>([])
   const [sections, setSections] = useState<Section[]>([])
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([])
+  const [subscriberSearch, setSubscriberSearch] = useState('')
   const [siteMeta, setSiteMeta] = useState<SiteMeta>(DEFAULT_SITE_META)
   const [siteMetaDirty, setSiteMetaDirty] = useState(false)
   const [savingMeta, setSavingMeta] = useState(false)
@@ -1448,7 +1458,26 @@ export default function AdminHub() {
     setLinkLists(snap.docs.map(d => ({ id: d.id, ...d.data() } as LinkList)))
   }
 
-  useEffect(() => { loadGuides(); loadSections(); loadSiteMeta(); loadLinkLists() }, [])
+  async function loadSubscribers() {
+    const snap = await getDocs(collection(db, 'subscribers'))
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Subscriber))
+    list.sort((a, b) => (b.signedUpAt || '').localeCompare(a.signedUpAt || ''))
+    setSubscribers(list)
+  }
+
+  useEffect(() => { loadGuides(); loadSections(); loadSiteMeta(); loadLinkLists(); loadSubscribers() }, [])
+
+  function exportSubscribersCsv() {
+    const rows = [['Name', 'Email', 'Signed up at', 'Guide ID'], ...subscribers.map(s => [s.name, s.email, s.signedUpAt, s.guideId || ''])]
+    const csv = rows.map(r => r.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const [translatingAll, setTranslatingAll] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null)
@@ -2123,6 +2152,65 @@ export default function AdminHub() {
               </span>
             )}
           </div>
+        </div>
+
+        {/* ── Subscribers ── */}
+        <div className="admin-section" style={{ marginTop: 24 }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <span>📇 Subscribers ({subscribers.length})</span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="text"
+                value={subscriberSearch}
+                onChange={e => setSubscriberSearch(e.target.value)}
+                placeholder="🔍 Search name or email…"
+                style={{
+                  fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600,
+                  padding: '7px 14px', border: '2px solid var(--line)', borderRadius: 99,
+                  background: 'var(--paper)', boxShadow: 'var(--shadow-sm)', minWidth: 200,
+                }}
+              />
+              <button className="btn btn-secondary btn-sm" onClick={exportSubscribersCsv} disabled={subscribers.length === 0}>
+                ⬇ Export CSV
+              </button>
+            </div>
+          </h3>
+          {subscribers.length === 0 ? (
+            <div className="empty-state"><span className="icon">📭</span><p>No subscribers yet.</p></div>
+          ) : (
+            <div className="settings-panel" style={{ maxHeight: 360, overflowY: 'auto', padding: 0 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--line)', position: 'sticky', top: 0, background: 'var(--paper)' }}>
+                    <th style={{ padding: '8px 14px' }}>Name</th>
+                    <th style={{ padding: '8px 14px' }}>Email</th>
+                    <th style={{ padding: '8px 14px' }}>Signed up</th>
+                    <th style={{ padding: '8px 14px' }}>Via guide</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subscribers
+                    .filter(s => {
+                      const q = subscriberSearch.trim().toLowerCase()
+                      if (!q) return true
+                      return s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q)
+                    })
+                    .map(s => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--cream-deep)' }}>
+                        <td style={{ padding: '8px 14px' }}>{s.name || '—'}</td>
+                        <td style={{ padding: '8px 14px', fontFamily: 'var(--mono)' }}>{s.email}</td>
+                        <td style={{ padding: '8px 14px', color: 'var(--muted)' }}>
+                          {s.signedUpAt ? new Date(s.signedUpAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </td>
+                        <td style={{ padding: '8px 14px', color: 'var(--muted)' }}>
+                          {s.guideId ? (guides.find(g => g.id === s.guideId)?.title || s.guideId) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* ── Bulk Utilities ── */}

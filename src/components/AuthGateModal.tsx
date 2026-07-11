@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, addDoc } from 'firebase/firestore'
-import { sendSignInLinkToEmail } from 'firebase/auth'
-import { db, auth, ADMIN_EMAIL } from '../firebase'
+import { db, ADMIN_EMAIL } from '../firebase'
 import { trackSignupStarted, trackMagicLinkSent } from '../analytics'
+import { sendMagicLink } from '../sendMagicLink'
 
 interface AuthGateModalProps {
   lang: 'en' | 'fr'
@@ -52,9 +52,10 @@ export default function AuthGateModal({ lang, onClose, onMagicLinkSent }: AuthGa
       onMagicLinkSent()
       trackMagicLinkSent('signup', 'like_save_modal')
 
-      await sendSignInLinkToEmail(auth, signupEmail.trim(), {
-        url: window.location.href,
-        handleCodeInApp: true,
+      await sendMagicLink(signupEmail.trim(), {
+        lang,
+        name: signupName.trim(),
+        mode: 'signup',
       })
 
       setSentTo(signupEmail.trim())
@@ -76,9 +77,9 @@ export default function AuthGateModal({ lang, onClose, onMagicLinkSent }: AuthGa
       onMagicLinkSent()
       trackMagicLinkSent('login', 'like_save_modal')
 
-      await sendSignInLinkToEmail(auth, loginEmail.trim(), {
-        url: window.location.href,
-        handleCodeInApp: true,
+      await sendMagicLink(loginEmail.trim(), {
+        lang,
+        mode: 'login',
       })
 
       setSentTo(loginEmail.trim())

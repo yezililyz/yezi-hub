@@ -1,8 +1,11 @@
 import { initializeApp } from 'firebase-admin/app'
 import { getStorage } from 'firebase-admin/storage'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getAuth } from 'firebase-admin/auth'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { defineSecret } from 'firebase-functions/params'
+import { buildMagicLinkEmail } from './emailTemplate.js'
 
 initializeApp()
 
@@ -10,9 +13,34 @@ initializeApp()
 //   firebase functions:secrets:set VAPI_API_KEY
 //   firebase functions:secrets:set VAPI_VOICE_EN   (Vapi voice ID for English)
 //   firebase functions:secrets:set VAPI_VOICE_FR   (Vapi voice ID for French)
+//   firebase functions:secrets:set RESEND_API_KEY  (for magic-link + notification emails)
 const VAPI_API_KEY   = defineSecret('VAPI_API_KEY')
 const VAPI_VOICE_EN  = defineSecret('VAPI_VOICE_EN')
 const VAPI_VOICE_FR  = defineSecret('VAPI_VOICE_FR')
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
+
+const MAIL_FROM = "Yezi's Knowledge Hub <hello@yezihub.com>"
+const ADMIN_EMAIL = 'yezi.lilyz@gmail.com'
+
+async function sendViaResend(apiKey: string, opts: { to: string; subject: string; html: string; text: string; replyTo?: string }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: MAIL_FROM,
+      to: [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+      reply_to: opts.replyTo,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Resend API error ${res.status}: ${err}`)
+  }
+  return res.json()
+}
 
 interface Section { id: string; text: string }
 
@@ -173,5 +201,72 @@ export const translateTexts = onCall(
     const translated = texts.map((t, i) => (parts[i]?.trim() || t))
 
     return { translated }
+  }
+)
+
+// ── sendMagicLinkEmail — replaces client-side sendSignInLinkToEmail ─────────
+// Firebase Auth's own email-sending has two problems: its template can't be
+// restyled beyond basic text edits, and it sends from a shared Firebase
+// domain with no SPF/DKIM alignment, which readers' inboxes flag as spam.
+// This generates the same kind of sign-in link server-side (Admin SDK) and
+// sends it through Resend with a verified custom domain (yezihub.com) and a
+// fully custom branded HTML template instead.
+export const sendMagicLinkEmail = onCall(
+  { secrets: [RESEND_API_KEY], cors: true },
+  async (request) => {
+    const { email, url, lang, name, mode } = request.data as {
+      email: string
+      url: string
+      lang?: 'en' | 'fr'
+      name?: string
+      mode?: 'signup' | 'login'
+    }
+
+    if (!email || !url) {
+      throw new HttpsError('invalid-argument', 'email and url are required.')
+    }
+
+    const link = await getAuth().generateSignInWithEmailLink(email, {
+      url,
+      handleCodeInApp: true,
+    })
+
+    const { subject, html, text } = buildMagicLinkEmail({
+      link,
+      lang: lang === 'fr' ? 'fr' : 'en',
+      mode: mode === 'login' ? 'login' : 'signup',
+      name,
+    })
+
+    try {
+      await sendViaResend(RESEND_API_KEY.value(), { to: email, subject, html, text })
+    } catch (err) {
+      throw new HttpsError('internal', `Failed to send email: ${(err as Error).message}`)
+    }
+
+    return { success: true }
+  }
+)
+
+// ── notifyOnNewSubscriber — pings the admin by email on every new signup ────
+// Low volume (one email per real signup), so real-time rather than batched
+// like the weekly traffic report.
+export const notifyOnNewSubscriber = onDocumentCreated(
+  { document: 'subscribers/{subscriberId}', secrets: [RESEND_API_KEY] },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data) return
+
+    const name = data.name || '(no name given)'
+    const email = data.email || '(no email)'
+    const guideId = data.guideId ? ` while viewing guide ${data.guideId}` : ''
+
+    await sendViaResend(RESEND_API_KEY.value(), {
+      to: ADMIN_EMAIL,
+      subject: `New signup: ${name} <${email}>`,
+      html: `<p>New subscriber${guideId}:</p><p><strong>${name}</strong><br>${email}</p>`,
+      text: `New subscriber${guideId}: ${name} <${email}>`,
+      replyTo: email,
+    })
   }
 )

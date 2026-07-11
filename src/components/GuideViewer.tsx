@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { doc, getDoc, collection, addDoc } from 'firebase/firestore'
-import { onAuthStateChanged, sendSignInLinkToEmail, signOut, type User } from 'firebase/auth'
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import TtsPlayer, { type GuideSection } from './TtsPlayer'
 import { trackGuideViewed, trackExportRequested, trackTtsStarted, trackTtsSectionPlayed, trackLanguageSwitched, trackSignedOut } from '../analytics'
+import { sendMagicLink } from '../sendMagicLink'
 
 interface Guide {
   title: string
@@ -194,9 +195,10 @@ export default function GuideViewer() {
       })
 
       // 2. Send magic link via Firebase Auth for authentication + PDF unlock
-      await sendSignInLinkToEmail(auth, signupEmail.trim(), {
-        url: window.location.href,
-        handleCodeInApp: true,
+      await sendMagicLink(signupEmail.trim(), {
+        lang,
+        name: signupName.trim(),
+        mode: 'signup',
       })
 
       // Store name + email in localStorage for use after magic link callback
@@ -220,9 +222,9 @@ export default function GuideViewer() {
     setSubmitting(true)
 
     try {
-      await sendSignInLinkToEmail(auth, loginEmail.trim(), {
-        url: window.location.href,
-        handleCodeInApp: true,
+      await sendMagicLink(loginEmail.trim(), {
+        lang,
+        mode: 'login',
       })
 
       localStorage.setItem('emailForSignIn', loginEmail.trim())
