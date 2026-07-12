@@ -63,7 +63,11 @@ interface Section {
   id: string; name: string; intro: string; order: number
   name_fr?: string
   intro_fr?: string
+  megaGroup?: string
 }
+
+const MEGA_GROUPS = ['Product', 'Tools', 'Books'] as const
+const MEGA_GROUP_LABEL_FR: Record<string, string> = { Product: 'Produit', Tools: 'Outils', Books: 'Livres' }
 
 interface LinkItem {
   id: string; title: string; url: string
@@ -196,9 +200,18 @@ export default function PublicHub() {
 
         setGuides(visibleGuides)
 
+        // Cluster sections by mega-group (Product → Tools → Books → unassigned),
+        // preserving each section's existing relative order within its group.
         const allSections = sectionsSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as Section))
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .sort((a, b) => {
+            const mgA = MEGA_GROUPS.indexOf((a.megaGroup ?? '') as typeof MEGA_GROUPS[number])
+            const mgB = MEGA_GROUPS.indexOf((b.megaGroup ?? '') as typeof MEGA_GROUPS[number])
+            const rankA = mgA === -1 ? MEGA_GROUPS.length : mgA
+            const rankB = mgB === -1 ? MEGA_GROUPS.length : mgB
+            if (rankA !== rankB) return rankA - rankB
+            return (a.order ?? 0) - (b.order ?? 0)
+          })
         setSections(allSections)
 
         const allLists = listsSnap.docs
@@ -439,19 +452,30 @@ export default function PublicHub() {
                     >
                       {lang === 'fr' ? 'Toutes les sections' : 'All Sections'}
                     </button>
-                    {sectionsWithGuides.map(s => {
-                      const name = lang === 'fr' ? (s.name_fr || s.name) : s.name
-                      return (
-                        <button
-                          key={s.id}
-                          className={`filter-chip ${filterSection === s.id ? 'active' : ''}`}
-                          onClick={() => selectFilterSection(s.id)}
-                        >
-                          {name}
-                        </button>
-                      )
-                    })}
                   </div>
+                  {[...MEGA_GROUPS, 'Unassigned'].map(mg => {
+                    const inGroup = sectionsWithGuides.filter(s => (s.megaGroup || 'Unassigned') === mg)
+                    if (inGroup.length === 0) return null
+                    return (
+                      <div key={mg} className="hub-filters-mega-row">
+                        <span className="hub-filters-mega-label">{lang === 'fr' ? (MEGA_GROUP_LABEL_FR[mg] || mg) : mg}</span>
+                        <div className="filter-chips">
+                          {inGroup.map(s => {
+                            const name = lang === 'fr' ? (s.name_fr || s.name) : s.name
+                            return (
+                              <button
+                                key={s.id}
+                                className={`filter-chip ${filterSection === s.id ? 'active' : ''}`}
+                                onClick={() => selectFilterSection(s.id)}
+                              >
+                                {name}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
 
                   {/* Level 2 — content type (guide.tag), scoped to the chosen section, revealed progressively */}
                   {filterSection && allTags.length > 0 && (
@@ -509,22 +533,30 @@ export default function PublicHub() {
       <div className="hub-layout">
         {!loading && activeSections.length > 0 && (
           <nav className="hub-toc" aria-label="Section index">
-            <div className="hub-toc-label">{lang === 'fr' ? 'SECTIONS' : 'SECTIONS'}</div>
-            {activeSections.map(section => {
-              const sectionName = lang === 'fr' ? (section.name_fr || section.name) : section.name
+            {[...MEGA_GROUPS, 'Unassigned'].map(mg => {
+              const inGroup = activeSections.filter(s => (s.megaGroup || 'Unassigned') === mg)
+              if (inGroup.length === 0) return null
               return (
-                <a
-                  key={section.id}
-                  href={`#section-${section.id}`}
-                  className={`hub-toc-link ${activeSectionId === section.id ? 'active' : ''}`}
-                  onClick={e => {
-                    e.preventDefault()
-                    trackSectionNavigation(section.id, section.name)
-                    document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }}
-                >
-                  {sectionName}
-                </a>
+                <div key={mg} className="hub-toc-mega-group">
+                  <div className="hub-toc-mega-label">{lang === 'fr' ? (MEGA_GROUP_LABEL_FR[mg] || mg) : mg}</div>
+                  {inGroup.map(section => {
+                    const sectionName = lang === 'fr' ? (section.name_fr || section.name) : section.name
+                    return (
+                      <a
+                        key={section.id}
+                        href={`#section-${section.id}`}
+                        className={`hub-toc-link ${activeSectionId === section.id ? 'active' : ''}`}
+                        onClick={e => {
+                          e.preventDefault()
+                          trackSectionNavigation(section.id, section.name)
+                          document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }}
+                      >
+                        {sectionName}
+                      </a>
+                    )
+                  })}
+                </div>
               )
             })}
           </nav>

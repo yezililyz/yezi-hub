@@ -52,7 +52,12 @@ interface Section {
   intro: string
   intro_fr?: string
   order: number
+  megaGroup?: string
 }
+
+// Top-level grouping sections nest under, both in the admin guide list and
+// the public site's section nav/filters — see guide-builder/RECURRENT_BUGS.md.
+const MEGA_GROUPS = ['Product', 'Tools', 'Books'] as const
 
 interface SiteMeta {
   title: string
@@ -704,11 +709,12 @@ interface SectionRowProps {
   isDropTarget: boolean
   dropAbove: boolean
   onUpdate: (name: string, intro: string, nameFr: string, introFr: string) => void
+  onMegaGroupChange: (megaGroup: string) => void
   onDelete: () => void
   onDragStart: () => void
 }
 
-function SectionRow({ section, idx, isDragging, isDropTarget, dropAbove, onUpdate, onDelete, onDragStart }: SectionRowProps) {
+function SectionRow({ section, idx, isDragging, isDropTarget, dropAbove, onUpdate, onMegaGroupChange, onDelete, onDragStart }: SectionRowProps) {
   const [name, setName] = useState(section.name)
   const [nameFr, setNameFr] = useState(section.name_fr ?? '')
   const [intro, setIntro] = useState(section.intro ?? '')
@@ -752,6 +758,19 @@ function SectionRow({ section, idx, isDragging, isDropTarget, dropAbove, onUpdat
           />
         </div>
         <div className="section-actions">
+          <select
+            value={section.megaGroup || ''}
+            onChange={e => onMegaGroupChange(e.target.value)}
+            title="Mega-group"
+            style={{
+              fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600,
+              padding: '5px 20px 5px 8px', border: '1.5px solid var(--line)', borderRadius: 7,
+              background: 'var(--cream)', cursor: 'pointer',
+            }}
+          >
+            <option value="">— mega-group —</option>
+            {MEGA_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
           {dirty && (
             <button className="btn btn-primary btn-sm" onClick={() => onUpdate(name, intro, nameFr, introFr)}>Save</button>
           )}
@@ -1471,6 +1490,14 @@ export default function AdminHub() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [fixingTitles, setFixingTitles] = useState(false)
   const [guideFilter, setGuideFilter] = useState<'all' | 'public' | 'private' | 'draft'>('all')
+  const [expandedMegaGroups, setExpandedMegaGroups] = useState<Set<string>>(new Set())
+  function toggleMegaGroup(mg: string) {
+    setExpandedMegaGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(mg)) next.delete(mg); else next.add(mg)
+      return next
+    })
+  }
   const [guideSearch, setGuideSearch] = useState('')
   const [showDuplicates, setShowDuplicates] = useState(true)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
@@ -1706,6 +1733,11 @@ export default function AdminHub() {
       intro_fr: introFr.trim() || null,
     })
     show('Section updated.')
+    loadSections()
+  }
+
+  async function updateSectionMegaGroup(id: string, megaGroup: string) {
+    await updateDoc(doc(db, 'sections', id), { megaGroup })
     loadSections()
   }
 
@@ -1959,6 +1991,37 @@ export default function AdminHub() {
   }
 
   const [audioGeneratingId, setAudioGeneratingId] = useState<string | null>(null)
+  const [translatingGuideId, setTranslatingGuideId] = useState<string | null>(null)
+
+  // Per-guide "Translate" button on each row. Deliberately LLM-only (no
+  // Google Translate fallback) — this is an explicit, one-off action the
+  // admin triggers on a specific guide, so a silent lower-quality fallback
+  // would be surprising; better to fail with a clear message telling them to
+  // add an OpenAI key than to quietly ship a worse translation.
+  async function translateOneGuide(guide: Guide) {
+    if (!openAIKey) {
+      show('Add an OpenAI key first (Bulk Utilities below) — this button only uses the LLM, not Google Translate.', 'error')
+      return
+    }
+    setTranslatingGuideId(guide.id)
+    try {
+      const result = await translateGuideFull(guide, openAIKey)
+      await updateDoc(doc(db, 'guides', guide.id), {
+        title_fr: result.title_fr,
+        description_fr: result.description_fr,
+        tag_fr: result.tag_fr,
+        chips_fr: result.chips_fr,
+        htmlContent_fr: result.htmlContent_fr,
+      })
+      show(`Translated "${guide.title}" to French.`)
+      loadGuides()
+    } catch (err) {
+      console.error(err)
+      show('Translation failed — check console (F12).', 'error')
+    } finally {
+      setTranslatingGuideId(null)
+    }
+  }
 
   // Extract readable sections from guide HTML (same logic as TtsPlayer in GuideViewer)
   function extractTtsSections(html: string): Array<{ id: string; text: string }> {
@@ -2122,6 +2185,18 @@ export default function AdminHub() {
   }
   const unassignedGuides = guidesBySectionId.get('__unassigned__')
   if (unassignedGuides?.length) groupedGuideSections.push({ id: '__unassigned__', name: '⚠ No section', guides: unassignedGuides })
+
+  // Mega-group wrapper: Product / Tools / Books, each collapsed by default,
+  // containing the sections (and their guides) assigned to it. Sections with
+  // no megaGroup set yet fall into an "Unassigned" bucket so nothing is lost.
+  const sectionsById = new Map(sections.map(s => [s.id, s]))
+  const megaGroupOf = (sectionId: string) => sectionsById.get(sectionId)?.megaGroup || 'Unassigned'
+  const groupedByMegaGroup: { megaGroup: string; sections: typeof groupedGuideSections; guideCount: number }[] = []
+  for (const mg of [...MEGA_GROUPS, 'Unassigned']) {
+    const secs = groupedGuideSections.filter(g => g.id === '__unassigned__' ? mg === 'Unassigned' : megaGroupOf(g.id) === mg)
+    if (secs.length === 0) continue
+    groupedByMegaGroup.push({ megaGroup: mg, sections: secs, guideCount: secs.reduce((n, s) => n + s.guides.length, 0) })
+  }
 
   return (
     <>
@@ -2409,6 +2484,7 @@ export default function AdminHub() {
                 isDropTarget={secDropIdx === idx && secDraggedIdx !== idx}
                 dropAbove={secDropAbove}
                 onUpdate={(name, intro, nameFr, introFr) => updateSection(s.id, name, intro, nameFr, introFr)}
+                onMegaGroupChange={mg => updateSectionMegaGroup(s.id, mg)}
                 onDelete={() => deleteSection(s.id)}
                 onDragStart={() => { setSecDraggedIdx(idx); secDragRef.current.from = idx }}
               />
@@ -2760,7 +2836,16 @@ export default function AdminHub() {
             ? <div className="empty-state"><span className="icon">📭</span><p>No guides yet — drop one above.</p></div>
             : (
               <div className="guide-list guide-list-compact">
-                {groupedGuideSections.map(group => (
+                {groupedByMegaGroup.map(mgGroup => {
+                  const isExpanded = expandedMegaGroups.has(mgGroup.megaGroup)
+                  return (
+                  <div key={mgGroup.megaGroup} className="admin-mega-group">
+                    <button className="admin-mega-group-heading" onClick={() => toggleMegaGroup(mgGroup.megaGroup)}>
+                      <span className="row-chevron">{isExpanded ? '▾' : '▸'}</span>
+                      {mgGroup.megaGroup}
+                      <span className="admin-guide-group-count">{mgGroup.guideCount}</span>
+                    </button>
+                    {isExpanded && mgGroup.sections.map(group => (
                 <div key={group.id} className="admin-guide-group">
                   <div className="admin-guide-group-heading">
                     {group.name}
@@ -2865,6 +2950,15 @@ export default function AdminHub() {
                           <button className="btn btn-secondary btn-sm" onClick={() => previewGuide(guide)}>Preview</button>
                           <button
                             className="btn btn-secondary btn-sm"
+                            disabled={translatingGuideId === guide.id}
+                            onClick={() => translateOneGuide(guide)}
+                          >
+                            {translatingGuideId === guide.id
+                              ? '⏳ Translating…'
+                              : (guide.htmlContent_fr ? '🇫🇷 Re-translate' : '🇫🇷 Translate')}
+                          </button>
+                          <button
+                            className="btn btn-secondary btn-sm"
                             title={guide.audioGeneratedAt_en ? `EN audio: ${new Date(guide.audioGeneratedAt_en).toLocaleDateString()}` : 'Generate EN audio via Vapi'}
                             disabled={audioGeneratingId === guide.id + '_en'}
                             onClick={() => generateAudio(guide, 'en')}
@@ -2900,7 +2994,10 @@ export default function AdminHub() {
                   )
                   })}
                 </div>
-                ))}
+                    ))}
+                  </div>
+                  )
+                })}
               </div>
             )
           }
