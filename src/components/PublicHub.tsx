@@ -24,6 +24,8 @@ interface Guide {
   pinned?: boolean
   likeCount?: number
   created_at?: { toMillis?: () => number; seconds?: number } | null
+  level?: string
+  level_fr?: string
 }
 
 type SortMode = 'manual' | 'recent' | 'az' | 'popular'
@@ -104,7 +106,7 @@ export default function PublicHub() {
   const [sortMode, setSortMode] = useState<SortMode>('manual')
   const [filterSection, setFilterSection] = useState<string | null>(null)
   const [filterTag, setFilterTag] = useState<string | null>(null)
-  const [filterChip, setFilterChip] = useState<string | null>(null)
+  const [filterLevel, setFilterLevel] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
@@ -224,17 +226,21 @@ export default function PublicHub() {
   // Level 1 of the progressive filter: sections that actually have guides
   const sectionsWithGuides = sections.filter(s => guides.some(g => g.sectionId === s.id))
 
-  // Level 2: topics (guide.tag) — scoped to the chosen section once one is picked
+  // Level 2: content type (guide.tag — a controlled vocabulary: Playbook,
+  // Framework, Case Study/Teardown, Field Guide, Toolkit, Interview Guide),
+  // scoped to the chosen section once one is picked
   const tagPool = filterSection ? guides.filter(g => g.sectionId === filterSection) : guides
   const allTags = Array.from(new Set(
     tagPool.map(g => (lang === 'fr' ? (g.tag_fr || g.tag) : g.tag)).filter(Boolean)
   )).sort((a, b) => a.localeCompare(b))
 
-  const allChips = Array.from(new Set(
-    guides.flatMap(g => (lang === 'fr' && g.chips_fr?.length ? g.chips_fr : g.chips) ?? [])
-  )).sort((a, b) => a.localeCompare(b))
+  // Level filter: Beginner/Intermediate/Advanced, kept in that fixed order
+  // rather than alphabetical
+  const LEVEL_ORDER = ['Beginner', 'Intermediate', 'Advanced']
+  const LEVEL_LABEL_FR: Record<string, string> = { Beginner: 'Débutant', Intermediate: 'Intermédiaire', Advanced: 'Avancé' }
+  const allLevels = LEVEL_ORDER.filter(lvl => guides.some(g => g.level === lvl))
 
-  const hasActiveFilter = !!filterSection || !!filterTag || !!filterChip || searchQuery.trim().length > 0
+  const hasActiveFilter = !!filterSection || !!filterTag || !!filterLevel || searchQuery.trim().length > 0
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const filteredGuides = guides.filter(g => {
@@ -242,7 +248,7 @@ export default function PublicHub() {
     const chips = (lang === 'fr' && g.chips_fr?.length ? g.chips_fr : g.chips) ?? []
     if (filterSection && g.sectionId !== filterSection) return false
     if (filterTag && tag !== filterTag) return false
-    if (filterChip && !chips.includes(filterChip)) return false
+    if (filterLevel && g.level !== filterLevel) return false
     if (normalizedQuery) {
       const title = lang === 'fr' ? (g.title_fr || g.title) : g.title
       const desc = lang === 'fr' ? (g.description_fr || g.description) : g.description
@@ -392,7 +398,7 @@ export default function PublicHub() {
               />
             </div>
 
-            {(allTags.length > 0 || allChips.length > 0) && (
+            {(allTags.length > 0 || allLevels.length > 0) && (
               <button
                 className={`hub-filters-btn ${showFilters ? 'active' : ''}`}
                 onClick={() => setShowFilters(v => !v)}
@@ -403,7 +409,7 @@ export default function PublicHub() {
                   <line x1="4" y1="18" x2="20" y2="18" /><circle cx="11" cy="18" r="2" fill="var(--paper)" />
                 </svg>
                 {lang === 'fr' ? 'Filtres' : 'Filters'}
-                {(filterSection || filterTag || filterChip) && <span className="hub-filters-dot" />}
+                {(filterSection || filterTag || filterLevel) && <span className="hub-filters-dot" />}
               </button>
             )}
 
@@ -421,7 +427,7 @@ export default function PublicHub() {
             </div>
           </div>
 
-          {showFilters && (sectionsWithGuides.length > 0 || allChips.length > 0) && (
+          {showFilters && (sectionsWithGuides.length > 0 || allLevels.length > 0) && (
             <div className="hub-filters-panel">
               {sectionsWithGuides.length > 0 && (
                 <div className="hub-filters-group">
@@ -447,16 +453,16 @@ export default function PublicHub() {
                     })}
                   </div>
 
-                  {/* Level 2 — topics, scoped to the chosen section, revealed progressively */}
+                  {/* Level 2 — content type (guide.tag), scoped to the chosen section, revealed progressively */}
                   {filterSection && allTags.length > 0 && (
                     <div className="hub-filters-subgroup">
-                      <span className="hub-toolbar-label">{lang === 'fr' ? 'SUJET' : 'TOPIC'}</span>
+                      <span className="hub-toolbar-label">{lang === 'fr' ? 'TYPE DE CONTENU' : 'CONTENT TYPE'}</span>
                       <div className="filter-chips">
                         <button
                           className={`filter-chip ${!filterTag ? 'active' : ''}`}
                           onClick={() => setFilterTag(null)}
                         >
-                          {lang === 'fr' ? 'Tous les sujets' : 'All Topics'}
+                          {lang === 'fr' ? 'Tous les types' : 'All Types'}
                         </button>
                         {allTags.map(t => (
                           <button
@@ -473,17 +479,23 @@ export default function PublicHub() {
                 </div>
               )}
 
-              {allChips.length > 0 && (
+              {allLevels.length > 0 && (
                 <div className="hub-filters-group">
-                  <span className="hub-toolbar-label">{lang === 'fr' ? 'TYPE DE CONTENU' : 'CONTENT TYPE'}</span>
+                  <span className="hub-toolbar-label">{lang === 'fr' ? 'NIVEAU' : 'LEVEL'}</span>
                   <div className="filter-chips">
-                    {allChips.map(c => (
+                    <button
+                      className={`filter-chip ${!filterLevel ? 'active' : ''}`}
+                      onClick={() => setFilterLevel(null)}
+                    >
+                      {lang === 'fr' ? 'Tous niveaux' : 'All Levels'}
+                    </button>
+                    {allLevels.map(lvl => (
                       <button
-                        key={c}
-                        className={`filter-chip ${filterChip === c ? 'active' : ''}`}
-                        onClick={() => setFilterChip(prev => prev === c ? null : c)}
+                        key={lvl}
+                        className={`filter-chip ${filterLevel === lvl ? 'active' : ''}`}
+                        onClick={() => setFilterLevel(prev => prev === lvl ? null : lvl)}
                       >
-                        {c}
+                        {lang === 'fr' ? LEVEL_LABEL_FR[lvl] : lvl}
                       </button>
                     ))}
                   </div>
@@ -531,7 +543,7 @@ export default function PublicHub() {
             </p>
             <button
               className="btn btn-secondary btn-sm"
-              onClick={() => { setFilterSection(null); setFilterTag(null); setFilterChip(null); setSearchQuery('') }}
+              onClick={() => { setFilterSection(null); setFilterTag(null); setFilterLevel(null); setSearchQuery('') }}
               style={{ marginTop: 10 }}
             >
               {lang === 'fr' ? 'Effacer les filtres' : 'Clear filters'}

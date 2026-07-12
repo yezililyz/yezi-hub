@@ -23,6 +23,8 @@ interface Guide {
   tag_fr?: string
   chips: string[]
   chips_fr?: string[]
+  level?: string
+  level_fr?: string
   htmlContent: string
   htmlContent_fr?: string
   // Large guides (over INLINE_LIMIT_BYTES) store their HTML in Storage instead
@@ -114,6 +116,24 @@ function useToast() {
 // constraint — large files route to Storage (see persistGuideHtml) — this just
 // guards against something absurd hanging the DOMParser/translation pipeline.
 const MAX_SIZE_BYTES = 20_000_000
+
+// Controlled taxonomy — see guide-builder/RECURRENT_BUGS.md taxonomy cleanup.
+// `tag`/`tag_fr` hold the content type (was freeform before, now one of these);
+// `level`/`level_fr` are a new field. Keep both dropdowns driven by this list
+// so the vocabulary can't drift back into one-off free text per guide.
+const CONTENT_TYPES: { en: string; fr: string }[] = [
+  { en: 'Playbook', fr: 'Guide pratique' },
+  { en: 'Framework', fr: 'Cadre méthodologique' },
+  { en: 'Case Study/Teardown', fr: 'Étude de cas' },
+  { en: 'Field Guide', fr: 'Guide de référence' },
+  { en: 'Toolkit', fr: 'Boîte à outils' },
+  { en: 'Interview Guide', fr: "Guide d'entretien" },
+]
+const LEVELS: { en: string; fr: string }[] = [
+  { en: 'Beginner', fr: 'Débutant' },
+  { en: 'Intermediate', fr: 'Intermédiaire' },
+  { en: 'Advanced', fr: 'Avancé' },
+]
 
 // Firestore hard-caps a document at 1 MiB (1,048,576 bytes) total, across ALL
 // fields, and is NOT configurable on any plan. A guide document can hold both
@@ -781,14 +801,16 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
     icon: guide.icon,
     tag: guide.tag,
     chips: Array.isArray(guide.chips) ? guide.chips.join(', ') : '',
+    level: guide.level ?? '',
     order: guide.order ?? 0,
     sectionId: guide.sectionId ?? '',
-    
+
     // French metadata
     title_fr: guide.title_fr ?? '',
     description_fr: guide.description_fr ?? '',
     tag_fr: guide.tag_fr ?? '',
     chips_fr: Array.isArray(guide.chips_fr) ? guide.chips_fr.join(', ') : '',
+    level_fr: guide.level_fr ?? '',
   })
   
   const [editedHtml, setEditedHtml] = useState(guide.htmlContent)
@@ -1107,6 +1129,7 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
         icon: form.icon.trim() || '📄',
         tag: form.tag.trim(),
         chips: form.chips.split(',').map(c => c.trim()).filter(Boolean),
+        level: form.level || null,
         order: Number(form.order) || 0,
         sectionId: form.sectionId || null,
         htmlContent: en.inline,
@@ -1117,6 +1140,7 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
         description_fr: form.description_fr.trim() || null,
         tag_fr: form.tag_fr.trim() || null,
         chips_fr: form.chips_fr.split(',').map(c => c.trim()).filter(Boolean),
+        level_fr: form.level_fr || null,
         htmlContent_fr: fr.inline,
         htmlUrl_fr: fr.url,
       }
@@ -1170,8 +1194,18 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
               </div>
             </div>
             <div className="field">
-              <label>Tag (EN)</label>
-              <input value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))} />
+              <label>Content type (EN)</label>
+              <select value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}>
+                <option value="">— none —</option>
+                {CONTENT_TYPES.map(t => <option key={t.en} value={t.en}>{t.en}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Level</label>
+              <select value={form.level} onChange={e => setForm(f => ({ ...f, level: e.target.value }))}>
+                <option value="">— none —</option>
+                {LEVELS.map(l => <option key={l.en} value={l.en}>{l.en}</option>)}
+              </select>
             </div>
             <div className="field field-full">
               <label>Section</label>
@@ -1200,8 +1234,18 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
               <textarea value={form.description_fr} onChange={e => setForm(f => ({ ...f, description_fr: e.target.value }))} placeholder="Traduction de la description" />
             </div>
             <div className="field">
-              <label>Tag (FR)</label>
-              <input value={form.tag_fr} onChange={e => setForm(f => ({ ...f, tag_fr: e.target.value }))} placeholder="Traduction du badge" />
+              <label>Content type (FR)</label>
+              <select value={form.tag_fr} onChange={e => setForm(f => ({ ...f, tag_fr: e.target.value }))}>
+                <option value="">— none —</option>
+                {CONTENT_TYPES.map(t => <option key={t.fr} value={t.fr}>{t.fr}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Level (FR)</label>
+              <select value={form.level_fr} onChange={e => setForm(f => ({ ...f, level_fr: e.target.value }))}>
+                <option value="">— none —</option>
+                {LEVELS.map(l => <option key={l.fr} value={l.fr}>{l.fr}</option>)}
+              </select>
             </div>
             <div className="field">
               <label>Chips (FR) (comma-separated)</label>
@@ -1779,29 +1823,39 @@ export default function AdminHub() {
       const translatedHtml = await translateHtmlContent(content, key)
       setHtmlContentFr(translatedHtml)
 
-      const [title_fr, description_fr, tag_fr, chips_fr] = await Promise.all([
+      const [title_fr, description_fr, , chips_fr] = await Promise.all([
         translateText(parsed.title, key),
         translateText(parsed.description, key),
         translateText(parsed.tag, key),
         translateText(parsed.chips, key),
       ])
-      
+
+      // parsed.tag is a freeform guess from the HTML (h1/meta keywords) — not
+      // a match for the controlled content-type vocabulary, so don't carry it
+      // (or its translation) forward. Leave content type/level blank; the
+      // admin picks from the dropdown explicitly.
       setForm({
         ...parsed,
+        tag: '',
         title_fr,
         description_fr,
-        tag_fr,
+        tag_fr: '',
         chips_fr,
+        level: '',
+        level_fr: '',
       })
       setNewFileFrUpload(null)
       show('French translation generated successfully!')
     } catch (err) {
       setForm({
         ...parsed,
+        tag: '',
         title_fr: '',
         description_fr: '',
         tag_fr: '',
         chips_fr: '',
+        level: '',
+        level_fr: '',
       })
       setHtmlContentFr('')
       setNewFileFrUpload(null)
@@ -1866,6 +1920,7 @@ export default function AdminHub() {
         icon: form.icon.trim() || '📄',
         tag: form.tag.trim(),
         chips: form.chips.split(',').map((c: string) => c.trim()).filter(Boolean),
+        level: form.level || null,
         htmlContent: en.inline,
         htmlUrl: en.url,
         filename: file.name,
@@ -1881,6 +1936,7 @@ export default function AdminHub() {
         description_fr: form.description_fr.trim() || null,
         tag_fr: form.tag_fr.trim() || null,
         chips_fr: form.chips_fr.split(',').map((c: string) => c.trim()).filter(Boolean),
+        level_fr: form.level_fr || null,
         htmlContent_fr: fr.inline,
         htmlUrl_fr: fr.url,
         filename_fr: newFileFrUpload ? newFileFrUpload.name : null,
@@ -2522,8 +2578,18 @@ export default function AdminHub() {
                         </div>
                       </div>
                       <div className="field">
-                        <label>Tag (EN)</label>
-                        <input value={form.tag} onChange={e => setForm((f: any) => f && ({ ...f, tag: e.target.value }))} />
+                        <label>Content type (EN)</label>
+                        <select value={form.tag} onChange={e => setForm((f: any) => f && ({ ...f, tag: e.target.value }))}>
+                          <option value="">— none —</option>
+                          {CONTENT_TYPES.map(t => <option key={t.en} value={t.en}>{t.en}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>Level</label>
+                        <select value={form.level} onChange={e => setForm((f: any) => f && ({ ...f, level: e.target.value }))}>
+                          <option value="">— none —</option>
+                          {LEVELS.map(l => <option key={l.en} value={l.en}>{l.en}</option>)}
+                        </select>
                       </div>
                       <div className="field field-full">
                         <label>Section</label>
@@ -2552,8 +2618,18 @@ export default function AdminHub() {
                         <textarea value={form.description_fr} onChange={e => setForm((f: any) => f && ({ ...f, description_fr: e.target.value }))} placeholder="Description en français" />
                       </div>
                       <div className="field">
-                        <label>Tag (FR)</label>
-                        <input value={form.tag_fr} onChange={e => setForm((f: any) => f && ({ ...f, tag_fr: e.target.value }))} placeholder="Badge en français" />
+                        <label>Content type (FR)</label>
+                        <select value={form.tag_fr} onChange={e => setForm((f: any) => f && ({ ...f, tag_fr: e.target.value }))}>
+                          <option value="">— none —</option>
+                          {CONTENT_TYPES.map(t => <option key={t.fr} value={t.fr}>{t.fr}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>Level (FR)</label>
+                        <select value={form.level_fr} onChange={e => setForm((f: any) => f && ({ ...f, level_fr: e.target.value }))}>
+                          <option value="">— none —</option>
+                          {LEVELS.map(l => <option key={l.fr} value={l.fr}>{l.fr}</option>)}
+                        </select>
                       </div>
                       <div className="field">
                         <label>Chips (FR) (comma-separated)</label>
