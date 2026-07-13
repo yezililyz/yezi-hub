@@ -259,7 +259,7 @@ export default function PublicHub() {
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const filteredGuides = guides.filter(g => {
     const tag = lang === 'fr' ? (g.tag_fr || g.tag) : g.tag
-    const chips = (lang === 'fr' && g.chips_fr?.length ? g.chips_fr : g.chips) ?? []
+    const chips = (lang === 'fr' && Array.isArray(g.chips_fr) && g.chips_fr.length ? g.chips_fr : g.chips) ?? []
     if (filterSection && g.sectionId !== filterSection) return false
     if (filterTag && tag !== filterTag) return false
     if (filterLevel && g.level !== filterLevel) return false

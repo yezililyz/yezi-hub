@@ -37,7 +37,7 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
   const title = lang === 'fr' && isClean(guide.title_fr) ? guide.title_fr : guide.title
   const desc = lang === 'fr' && isClean(guide.description_fr) ? guide.description_fr : guide.description
   const tag = lang === 'fr' && isClean(guide.tag_fr) ? guide.tag_fr : guide.tag
-  const chipsFr = lang === 'fr' ? guide.chips_fr?.filter(isClean) : undefined
+  const chipsFr = lang === 'fr' && Array.isArray(guide.chips_fr) ? guide.chips_fr.filter(isClean) : undefined
   const chips = chipsFr && chipsFr.length > 0 ? chipsFr : guide.chips
   const isPrivate = guide.visibility === 'private' || guide.private
 
