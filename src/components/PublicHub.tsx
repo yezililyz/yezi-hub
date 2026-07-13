@@ -112,6 +112,7 @@ export default function PublicHub() {
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [filterLevel, setFilterLevel] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [expandedTocGroups, setExpandedTocGroups] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
 
   function selectFilterSection(sectionId: string | null) {
@@ -538,8 +539,24 @@ export default function PublicHub() {
               if (inGroup.length === 0) return null
               return (
                 <div key={mg} className="hub-toc-mega-group">
-                  <div className="hub-toc-mega-label">{lang === 'fr' ? (MEGA_GROUP_LABEL_FR[mg] || mg) : mg}</div>
-                  {inGroup.map(section => {
+                  <button 
+                    className="hub-toc-mega-label"
+                    onClick={() => {
+                      setExpandedTocGroups(prev => {
+                        const next = new Set(prev)
+                        if (next.has(mg)) next.delete(mg)
+                        else next.add(mg)
+                        return next
+                      })
+                    }}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', outline: 'none', textAlign: 'left', display: 'flex', alignItems: 'center', width: '100%' }}
+                  >
+                    {lang === 'fr' ? (MEGA_GROUP_LABEL_FR[mg] || mg) : mg}
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--orange)' }}>
+                      {expandedTocGroups.has(mg) ? '▾' : '▸'}
+                    </span>
+                  </button>
+                  {expandedTocGroups.has(mg) && inGroup.map(section => {
                     const sectionName = lang === 'fr' ? (section.name_fr || section.name) : section.name
                     return (
                       <a
@@ -600,26 +617,29 @@ export default function PublicHub() {
             return (
               <div key={section.id} id={`section-${section.id}`} className="hub-section">
                 <div className="hub-section-heading">{sectionName}</div>
-                {sectionIntro && <p className="hub-section-intro">{sectionIntro}</p>}
+                
+                {true && (
+                  <div className="hub-section-content" style={{ marginTop: 16 }}>
+                    {sectionIntro && <p className="hub-section-intro">{sectionIntro}</p>}
 
-                {/* Guide cards */}
-                {sectionGuides.length > 0 && (
-                  <div className="guide-grid">
-                    {sectionGuides.map(guide => (
-                      <GuideCard
-                        key={guide.id}
-                        guide={guide}
-                        lang={lang}
-                        liked={library.get(guide.id)?.liked ?? false}
-                        saved={library.get(guide.id)?.saved ?? false}
-                        isNew={createdMillis(guide) > 0 && (Date.now() - createdMillis(guide)) < NEW_WINDOW_MS}
-                        onOpen={() => navigate(`/guide/${guide.id}?lang=${lang}`)}
-                        onToggleLike={() => handleToggleLike(guide.id)}
-                        onToggleSave={() => handleToggleSave(guide.id)}
-                      />
-                    ))}
-                  </div>
-                )}
+                    {/* Guide cards */}
+                    {sectionGuides.length > 0 && (
+                      <div className="guide-grid">
+                        {sectionGuides.map(guide => (
+                          <GuideCard
+                            key={guide.id}
+                            guide={guide}
+                            lang={lang}
+                            liked={library.get(guide.id)?.liked ?? false}
+                            saved={library.get(guide.id)?.saved ?? false}
+                            isNew={createdMillis(guide) > 0 && (Date.now() - createdMillis(guide)) < NEW_WINDOW_MS}
+                            onOpen={() => navigate(`/guide/${guide.id}?lang=${lang}`)}
+                            onToggleLike={() => handleToggleLike(guide.id)}
+                            onToggleSave={() => handleToggleSave(guide.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
 
                 {/* Link lists */}
                 {sectionLists.map(list => {
@@ -643,6 +663,8 @@ export default function PublicHub() {
                     </div>
                   )
                 })}
+                </div>
+                )}
               </div>
             )
           })

@@ -300,6 +300,20 @@ async function callOpenAITranslate(texts: string[], apiKey: string): Promise<str
 // Alias so all callers remain unchanged
 const callClaudeTranslate = callOpenAITranslate
 
+async function callOpenAIExtractMetadata(htmlContent: string, apiKey: string): Promise<any> {
+  if (!htmlContent || !apiKey) return {}
+  const extractFn = httpsCallable<{ htmlContent: string; apiKey: string }, { metadataStr: string }>(
+    getFunctions(), 'extractMetadata'
+  )
+  const result = await extractFn({ htmlContent, apiKey })
+  try {
+    return JSON.parse(result.data.metadataStr)
+  } catch (e) {
+    console.error('Failed to parse metadata from OpenAI', e)
+    return {}
+  }
+}
+
 // The free Google Translate endpoint is unofficial/undocumented and has no
 // SLA — it can hang indefinitely with no response, no error, and no timeout
 // of its own. A plain `await fetch(...)` in that situation blocks the entire
@@ -366,13 +380,13 @@ function collectHtmlTextNodes(htmlString: string): { doc: Document; nodes: Node[
 }
 
 async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTranslated> {
+  const chipsStr = (guide.chips || []).join(', ')
   const metaFields = [
     guide.title || '',
     guide.description || '',
     guide.tag || '',
-    ...(guide.chips || []),
+    chipsStr,
   ]
-  const chipCount = guide.chips?.length || 0
   const { doc, nodes, texts: htmlTexts } = collectHtmlTextNodes(guide.htmlContent || '')
 
   // Split into chunks only if combined payload exceeds ~60K chars (fits in one call for most guides)
@@ -400,8 +414,13 @@ async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTr
   const title_fr       = translated[0] || guide.title
   const description_fr = translated[1] || guide.description
   const tag_fr         = translated[2] || guide.tag
-  const chips_fr       = translated.slice(3, 3 + chipCount)
-  const htmlTranslated = translated.slice(3 + chipCount)
+  // The model sometimes echoes a separator-like marker around "§" when asked
+  // to keep list items distinct, but doesn't reliably reproduce the exact
+  // bracket glyphs we asked for (e.g. ⟨§⟩ instead of 〈§〉) — match on § alone,
+  // stripping whatever non-comma punctuation/whitespace surrounds it, so any
+  // bracket variant is handled instead of just one specific pair.
+  const chips_fr       = (translated[3] || chipsStr).replace(/[^\w,]*§[^\w,]*/gu, ',').split(',').map(c => c.trim()).filter(Boolean)
+  const htmlTranslated = translated.slice(4)
 
   // Reassemble HTML
   nodes.forEach((nd, i) => {
@@ -1105,7 +1124,7 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
         translateText(form.title, key),
         translateText(form.description, key),
         translateText(form.tag, key),
-        translateText(form.chips, key),
+        translateText(form.chips, key).then(res => res.replace(/[{<〈\[(]?§[}>〉\])]?/g, ',')),
       ])
       setForm(prev => ({
         ...prev,
@@ -1158,7 +1177,7 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
         title_fr: form.title_fr.trim() || null,
         description_fr: form.description_fr.trim() || null,
         tag_fr: form.tag_fr.trim() || null,
-        chips_fr: form.chips_fr.split(',').map(c => c.trim()).filter(Boolean),
+        chips_fr: form.chips_fr.replace(/[{<〈\[(]?§[}>〉\])]?/g, ',').split(',').map((c: string) => c.trim()).filter(Boolean),
         level_fr: form.level_fr || null,
         htmlContent_fr: fr.inline,
         htmlUrl_fr: fr.url,
@@ -1451,7 +1470,6 @@ function findDuplicateGuideGroups(guides: Guide[]): DuplicateGroup[] {
 }
 
 // ─── Main AdminHub ────────────────────────────────────────────────────────────
-
 export default function AdminHub() {
   const [guides, setGuides] = useState<Guide[]>([])
   const [sections, setSections] = useState<Section[]>([])
@@ -1491,6 +1509,8 @@ export default function AdminHub() {
   const [fixingTitles, setFixingTitles] = useState(false)
   const [guideFilter, setGuideFilter] = useState<'all' | 'public' | 'private' | 'draft'>('all')
   const [expandedMegaGroups, setExpandedMegaGroups] = useState<Set<string>>(new Set())
+  const [expandedSubSections, setExpandedSubSections] = useState<Set<string>>(new Set())
+
   function toggleMegaGroup(mg: string) {
     setExpandedMegaGroups(prev => {
       const next = new Set(prev)
@@ -1498,6 +1518,15 @@ export default function AdminHub() {
       return next
     })
   }
+
+  function toggleSubSection(id: string) {
+    setExpandedSubSections(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
   const [guideSearch, setGuideSearch] = useState('')
   const [showDuplicates, setShowDuplicates] = useState(true)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
@@ -1859,7 +1888,7 @@ export default function AdminHub() {
         translateText(parsed.title, key),
         translateText(parsed.description, key),
         translateText(parsed.tag, key),
-        translateText(parsed.chips, key),
+        translateText(parsed.chips, key).then(res => res.replace(/[{<〈\[(]?§[}>〉\])]?/g, ',')),
       ])
 
       // parsed.tag is a freeform guess from the HTML (h1/meta keywords) — not
@@ -1916,7 +1945,7 @@ export default function AdminHub() {
         translateText(form.title, key),
         translateText(form.description, key),
         translateText(form.tag, key),
-        translateText(form.chips, key),
+        translateText(form.chips, key).then(res => res.replace(/[{<〈\[(]?§[}>〉\])]?/g, ',')),
       ])
       setForm((prev: any) => prev && ({
         ...prev,
@@ -1967,7 +1996,7 @@ export default function AdminHub() {
         title_fr: form.title_fr.trim() || null,
         description_fr: form.description_fr.trim() || null,
         tag_fr: form.tag_fr.trim() || null,
-        chips_fr: form.chips_fr.split(',').map((c: string) => c.trim()).filter(Boolean),
+        chips_fr: form.chips_fr.replace(/[{<〈\[(]?§[}>〉\])]?/g, ',').split(',').map((c: string) => c.trim()).filter(Boolean),
         level_fr: form.level_fr || null,
         htmlContent_fr: fr.inline,
         htmlUrl_fr: fr.url,
@@ -2845,13 +2874,20 @@ export default function AdminHub() {
                       {mgGroup.megaGroup}
                       <span className="admin-guide-group-count">{mgGroup.guideCount}</span>
                     </button>
-                    {isExpanded && mgGroup.sections.map(group => (
+                    {isExpanded && mgGroup.sections.map(group => {
+                      const isSubExpanded = expandedSubSections.has(group.id)
+                      return (
                 <div key={group.id} className="admin-guide-group">
-                  <div className="admin-guide-group-heading">
+                  <button 
+                    className="admin-guide-group-heading"
+                    onClick={() => toggleSubSection(group.id)}
+                    style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', outline: 'none', padding: '8px 4px' }}
+                  >
+                    <span className="row-chevron" style={{ marginRight: 6 }}>{isSubExpanded ? '▾' : '▸'}</span>
                     {group.name}
                     <span className="admin-guide-group-count">{group.guides.length}</span>
-                  </div>
-                  {group.guides.map(guide => {
+                  </button>
+                  {isSubExpanded && group.guides.map(guide => {
                   const section = sections.find(s => s.id === guide.sectionId)
                   const isPrivate = guide.visibility === 'private' || guide.private
                   const isExpanded = expandedId === guide.id
@@ -2994,9 +3030,10 @@ export default function AdminHub() {
                   )
                   })}
                 </div>
-                    ))}
-                  </div>
-                  )
+                )
+                })}
+              </div>
+              )
                 })}
               </div>
             )

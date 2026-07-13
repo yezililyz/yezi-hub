@@ -25,11 +25,20 @@ interface GuideCardProps {
   onToggleSave: () => void
 }
 
+// Defensive guard against leaked translation-pipeline artifacts (the LLM
+// sometimes echoes a "§"-based segment separator into translated text
+// instead of a clean value — see guide-builder/RECURRENT_BUGS.md). Auto-fall
+// back to the English value rather than ever show broken text to a reader.
+function isClean(s: string | undefined | null): s is string {
+  return !!s && !s.includes('§')
+}
+
 export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, onToggleLike, onToggleSave }: GuideCardProps) {
-  const title = lang === 'fr' ? (guide.title_fr || guide.title) : guide.title
-  const desc = lang === 'fr' ? (guide.description_fr || guide.description) : guide.description
-  const tag = lang === 'fr' ? (guide.tag_fr || guide.tag) : guide.tag
-  const chips = lang === 'fr' && guide.chips_fr && guide.chips_fr.length > 0 ? guide.chips_fr : guide.chips
+  const title = lang === 'fr' && isClean(guide.title_fr) ? guide.title_fr : guide.title
+  const desc = lang === 'fr' && isClean(guide.description_fr) ? guide.description_fr : guide.description
+  const tag = lang === 'fr' && isClean(guide.tag_fr) ? guide.tag_fr : guide.tag
+  const chipsFr = lang === 'fr' ? guide.chips_fr?.filter(isClean) : undefined
+  const chips = chipsFr && chipsFr.length > 0 ? chipsFr : guide.chips
   const isPrivate = guide.visibility === 'private' || guide.private
 
   return (

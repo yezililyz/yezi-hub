@@ -197,10 +197,61 @@ export const translateTexts = onCall(
 
     const data = await res.json() as { choices?: { message?: { content?: string } }[] }
     const raw = data.choices?.[0]?.message?.content || ''
-    const parts = raw.split(TRANSLATE_SEP)
+    // The model doesn't always reproduce the exact separator glyphs (it can
+    // substitute a visually-similar Unicode bracket pair around "§"), so
+    // split tolerantly on any punctuation/whitespace around § rather than
+    // the literal TRANSLATE_SEP string — otherwise a single substitution
+    // silently merges two segments into one instead of raising an error.
+    const parts = raw.split(/\s*[^\w,.]*§[^\w,.]*\s*/gu)
     const translated = texts.map((t, i) => (parts[i]?.trim() || t))
 
     return { translated }
+  }
+)
+
+export const extractMetadata = onCall(
+  { cors: true },
+  async (request) => {
+    const { htmlContent, apiKey } = request.data as { htmlContent: string; apiKey: string }
+    if (!htmlContent || !apiKey) {
+      throw new HttpsError('invalid-argument', 'htmlContent and apiKey are required.')
+    }
+
+    const systemPrompt = `Extract or generate the following metadata from the provided HTML content.
+Return ONLY a strictly valid JSON object matching the schema. No markdown, no prefixes.
+{
+  "title": "Title of the document (keep it short)",
+  "description": "A 1-2 sentence compelling summary of what this document is about.",
+  "tag": "A single classification word (e.g. Playbook, Template, Guide, Memo, Roadmap)",
+  "chips": ["array", "of", "up", "to", "3", "short", "tags", "e.g.", "Linear agent", "Product Strategy"]
+}
+If a field cannot be reasonably determined, leave it as an empty string (or empty array for chips).`
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `HTML Content:\n\n${htmlContent.slice(0, 15000)}` }
+        ],
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new HttpsError('internal', `OpenAI API error ${res.status}: ${err}`)
+    }
+
+    const data = await res.json() as { choices?: { message?: { content?: string } }[] }
+    const raw = data.choices?.[0]?.message?.content || '{}'
+    return { metadataStr: raw }
   }
 )
 
