@@ -339,6 +339,9 @@ export default function PublicHub() {
             </div>
           </div>
           <div className="hub-header-actions">
+            <Link to={`/paths?lang=${lang}`} className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+              🎯 {lang === 'fr' ? 'Parcours' : 'Learning Paths'}
+            </Link>
             {currentUser ? (
               <>
                 {!isAdmin && (

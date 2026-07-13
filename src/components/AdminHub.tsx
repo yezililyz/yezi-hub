@@ -84,6 +84,21 @@ interface LinkList {
   items: LinkItem[]
 }
 
+// A curated, ordered sequence of the site's OWN guides forming a "program" a
+// reader works through top to bottom — distinct from LinkList, which curates
+// external URLs.
+interface Playlist {
+  id: string
+  title: string
+  title_fr?: string
+  description: string
+  description_fr?: string
+  icon: string
+  order: number
+  published: boolean
+  guideIds: string[]
+}
+
 interface Subscriber {
   id: string
   name: string
@@ -658,6 +673,150 @@ function LinkListEditor({ list, sections, isNew, onSave, onCancel, show }: LinkL
       <div style={{ display: 'flex', gap: 10 }}>
         <button type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving…' : '💾 Save list'}
+        </button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── PlaylistEditor (Learning Paths) ─────────────────────────────────────────
+
+interface PlaylistEditorProps {
+  playlist: Playlist
+  guides: Guide[]
+  isNew: boolean
+  onSave: () => void
+  onCancel: () => void
+  show: (msg: string, type?: 'success' | 'error') => void
+}
+
+function PlaylistEditor({ playlist, guides, isNew, onSave, onCancel, show }: PlaylistEditorProps) {
+  const [title, setTitle] = useState(playlist.title)
+  const [titleFr, setTitleFr] = useState(playlist.title_fr ?? '')
+  const [description, setDescription] = useState(playlist.description)
+  const [descriptionFr, setDescriptionFr] = useState(playlist.description_fr ?? '')
+  const [icon, setIcon] = useState(playlist.icon || '🎯')
+  const [published, setPublished] = useState(playlist.published ?? false)
+  const [guideIds, setGuideIds] = useState<string[]>(playlist.guideIds ?? [])
+  const [addGuideId, setAddGuideId] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const availableGuides = guides.filter(g => !guideIds.includes(g.id))
+  const pickedGuides = guideIds.map(id => guides.find(g => g.id === id)).filter((g): g is Guide => !!g)
+
+  function addGuide() {
+    if (!addGuideId) return
+    setGuideIds(prev => [...prev, addGuideId])
+    setAddGuideId('')
+  }
+  function removeGuide(id: string) { setGuideIds(prev => prev.filter(gid => gid !== id)) }
+  function moveGuide(idx: number, dir: -1 | 1) {
+    setGuideIds(prev => {
+      const next = [...prev]
+      const target = idx + dir
+      if (target < 0 || target >= next.length) return next
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next
+    })
+  }
+
+  async function handleSave() {
+    if (!title.trim()) { show('Learning path needs a title.', 'error'); return }
+    if (guideIds.length === 0) { show('Add at least one guide.', 'error'); return }
+    setSaving(true)
+    try {
+      const data = {
+        title: title.trim(),
+        title_fr: titleFr.trim() || null,
+        description: description.trim(),
+        description_fr: descriptionFr.trim() || null,
+        icon: icon.trim() || '🎯',
+        order: playlist.order ?? 0,
+        published,
+        guideIds,
+      }
+      if (isNew) {
+        await addDoc(collection(db, 'playlists'), data)
+      } else {
+        await updateDoc(doc(db, 'playlists', playlist.id), data)
+      }
+      show(isNew ? 'Learning path created!' : 'Learning path saved!')
+      onSave()
+    } catch (err) {
+      show('Save failed.', 'error'); console.error(err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="link-list-editor">
+      <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--orange-deep)', fontWeight: 700, marginBottom: 14 }}>
+        {isNew ? '+ NEW LEARNING PATH' : `✎ EDITING — ${playlist.title || 'Untitled path'}`}
+      </div>
+      <div className="form-grid" style={{ marginBottom: 16 }}>
+        <div className="field">
+          <label>Icon</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <EmojiPicker value={icon} onChange={setIcon} />
+            <input value={icon} onChange={e => setIcon(e.target.value)} style={{ flex: 1 }} placeholder="or type any emoji" />
+          </div>
+        </div>
+        <div className="field">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} />
+            Published (visible on public site)
+          </label>
+        </div>
+        <div className="field">
+          <label>Title (EN)</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Zero to First PRD" />
+        </div>
+        <div className="field">
+          <label>Title (FR)</label>
+          <input value={titleFr} onChange={e => setTitleFr(e.target.value)} placeholder="e.g. De zéro à votre premier PRD" />
+        </div>
+        <div className="field field-full">
+          <label>Description (EN)</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What will a reader get out of following this path?" />
+        </div>
+        <div className="field field-full">
+          <label>Description (FR)</label>
+          <textarea value={descriptionFr} onChange={e => setDescriptionFr(e.target.value)} />
+        </div>
+      </div>
+
+      <div style={{ fontFamily: '"Archivo",sans-serif', fontWeight: 800, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '.05em', fontSize: 10.5, color: 'var(--ink-soft)', marginBottom: 10 }}>
+        Guides in order
+      </div>
+      {pickedGuides.length === 0 && (
+        <div className="empty-state" style={{ marginTop: 0, marginBottom: 12 }}>
+          <span className="icon">📭</span>
+          <p>No guides added yet — pick one below.</p>
+        </div>
+      )}
+      {pickedGuides.map((g, i) => (
+        <div key={g.id} className="link-item-row" style={{ flexWrap: 'wrap', gap: '8px 12px', borderBottom: '1px dashed var(--faint)', paddingBottom: 10, marginBottom: 10, alignItems: 'center' }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted)', minWidth: 20 }}>{i + 1}.</span>
+          <span style={{ fontSize: 16 }}>{g.icon}</span>
+          <span style={{ flex: '1 1 240px' }}>{g.title}</span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveGuide(i, -1)} disabled={i === 0}>↑</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => moveGuide(i, 1)} disabled={i === pickedGuides.length - 1}>↓</button>
+          <button type="button" className="btn btn-danger btn-sm" onClick={() => removeGuide(g.id)}>✕</button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <select value={addGuideId} onChange={e => setAddGuideId(e.target.value)} style={{ flex: 1 }}>
+          <option value="">— Pick a guide to add —</option>
+          {availableGuides.map(g => <option key={g.id} value={g.id}>{g.icon} {g.title}</option>)}
+        </select>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={addGuide} disabled={!addGuideId}>+ Add</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : '💾 Save learning path'}
         </button>
         <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
       </div>
@@ -1505,7 +1664,13 @@ export default function AdminHub() {
   const [listDropIdx, setListDropIdx] = useState<number | null>(null)
   const [listDropAbove, setListDropAbove] = useState(true)
   const listDragRef = useRef<{ from: number | null; to: number | null; above: boolean }>({ from: null, to: null, above: true })
-  
+
+  // Playlist (Learning Paths) drag state
+  const [playlistDraggedIdx, setPlaylistDraggedIdx] = useState<number | null>(null)
+  const [playlistDropIdx, setPlaylistDropIdx] = useState<number | null>(null)
+  const [playlistDropAbove, setPlaylistDropAbove] = useState(true)
+  const playlistDragRef = useRef<{ from: number | null; to: number | null; above: boolean }>({ from: null, to: null, above: true })
+
   // Guide uploading state
   const [form, setForm] = useState<any>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -1547,6 +1712,9 @@ export default function AdminHub() {
   const [linkLists, setLinkLists] = useState<LinkList[]>([])
   const [showNewList, setShowNewList] = useState(false)
   const [editingListId, setEditingListId] = useState<string | null>(null)
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [showNewPlaylist, setShowNewPlaylist] = useState(false)
+  const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
   const { toast, show } = useToast()
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1579,7 +1747,12 @@ export default function AdminHub() {
     setSubscribers(list)
   }
 
-  useEffect(() => { loadGuides(); loadSections(); loadSiteMeta(); loadLinkLists(); loadSubscribers() }, [])
+  async function loadPlaylists() {
+    const snap = await getDocs(query(collection(db, 'playlists'), orderBy('order', 'asc')))
+    setPlaylists(snap.docs.map(d => ({ id: d.id, ...d.data() } as Playlist)))
+  }
+
+  useEffect(() => { loadGuides(); loadSections(); loadSiteMeta(); loadLinkLists(); loadSubscribers(); loadPlaylists() }, [])
 
   function exportSubscribersCsv() {
     const rows = [['Name', 'Email', 'Signed up at', 'Guide ID'], ...subscribers.map(s => [s.name, s.email, s.signedUpAt, s.guideId || ''])]
@@ -1882,6 +2055,51 @@ export default function AdminHub() {
   function handleListDragEnd() {
     listDragRef.current = { from: null, to: null, above: true }
     setListDraggedIdx(null); setListDropIdx(null)
+  }
+
+  async function reorderPlaylists(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return
+    const reordered = [...playlists]
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+    setPlaylists(reordered)
+    try {
+      await Promise.all(reordered.map((p, i) => updateDoc(doc(db, 'playlists', p.id), { order: i * 10 })))
+    } catch (err) {
+      show('Reorder failed.', 'error')
+      loadPlaylists()
+    }
+  }
+
+  function handlePlaylistDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const row = (e.target as HTMLElement).closest('[data-drag-idx]') as HTMLElement | null
+    if (!row) return
+    const idx = parseInt(row.dataset.dragIdx!)
+    const rect = row.getBoundingClientRect()
+    const above = e.clientY < rect.top + rect.height / 2
+    playlistDragRef.current.to = idx
+    playlistDragRef.current.above = above
+    setPlaylistDropIdx(idx)
+    setPlaylistDropAbove(above)
+  }
+
+  function handlePlaylistDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const { from, to, above } = playlistDragRef.current
+    if (from !== null && to !== null) {
+      const finalTo = above
+        ? (from < to ? to - 1 : to)
+        : (from > to ? to + 1 : to)
+      reorderPlaylists(from, finalTo)
+    }
+    playlistDragRef.current = { from: null, to: null, above: true }
+    setPlaylistDraggedIdx(null); setPlaylistDropIdx(null)
+  }
+
+  function handlePlaylistDragEnd() {
+    playlistDragRef.current = { from: null, to: null, above: true }
+    setPlaylistDraggedIdx(null); setPlaylistDropIdx(null)
   }
 
   async function processFile(f: File) {
@@ -2637,6 +2855,102 @@ export default function AdminHub() {
                       show={show}
                       onSave={() => { setEditingListId(null); loadLinkLists() }}
                       onCancel={() => setEditingListId(null)}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Learning Paths ── */}
+        <div className="admin-section">
+          <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>🎯 Learning Paths</span>
+            {!showNewPlaylist && (
+              <button className="btn btn-secondary btn-sm" onClick={() => { setShowNewPlaylist(true); setEditingPlaylistId(null) }}>
+                + Add path
+              </button>
+            )}
+          </h3>
+
+          {showNewPlaylist && (
+            <PlaylistEditor
+              playlist={{ id: '', title: '', title_fr: '', description: '', description_fr: '', icon: '🎯', order: playlists.length * 10, published: false, guideIds: [] }}
+              guides={guides}
+              isNew
+              show={show}
+              onSave={() => { setShowNewPlaylist(false); loadPlaylists() }}
+              onCancel={() => setShowNewPlaylist(false)}
+            />
+          )}
+
+          {playlists.length === 0 && !showNewPlaylist && (
+            <div className="empty-state" style={{ marginTop: 8 }}>
+              <span className="icon">📭</span>
+              <p>No learning paths yet — click "Add path" to curate one.</p>
+            </div>
+          )}
+          <div
+            className="guide-list"
+            style={{ marginTop: showNewPlaylist ? 16 : 0 }}
+            onDragOver={handlePlaylistDragOver}
+            onDrop={handlePlaylistDrop}
+            onDragEnd={handlePlaylistDragEnd}
+          >
+            {playlists.map((playlist, idx) => {
+              const isDragging = playlistDraggedIdx === idx
+              const isDropTarget = playlistDropIdx === idx && playlistDraggedIdx !== idx
+              return (
+                <div
+                  key={playlist.id}
+                  data-drag-idx={idx}
+                  draggable={true}
+                  onDragStart={() => { setPlaylistDraggedIdx(idx); playlistDragRef.current.from = idx }}
+                  style={{
+                    opacity: isDragging ? 0.3 : 1,
+                    borderTop: isDropTarget && playlistDropAbove ? '3px solid var(--orange)' : undefined,
+                    borderBottom: isDropTarget && !playlistDropAbove ? '3px solid var(--orange)' : undefined,
+                    transition: 'opacity .12s',
+                  }}
+                >
+                  <div className="guide-row">
+                    <span className="drag-handle" title="Drag to reorder" style={{ fontSize: 16 }}>⠿</span>
+                    <span className="row-icon" draggable={false}>{playlist.icon}</span>
+                    <div className="row-info" draggable={false} onMouseDown={e => e.stopPropagation()}>
+                      <div className="row-title">{playlist.title || <em style={{ color: 'var(--muted)' }}>Untitled</em>}</div>
+                      <div className="row-meta">
+                        {playlist.guideIds.length} guide{playlist.guideIds.length !== 1 ? 's' : ''}
+                        {playlist.published
+                          ? <> · <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>Published</span></>
+                          : <> · <span style={{ color: '#b85030' }}>Draft</span></>
+                        }
+                      </div>
+                    </div>
+                    <div className="row-actions">
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={editingPlaylistId === playlist.id ? { background: 'var(--orange)', color: '#fff' } : {}}
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={() => { setEditingPlaylistId(editingPlaylistId === playlist.id ? null : playlist.id); setShowNewPlaylist(false) }}
+                      >
+                        {editingPlaylistId === playlist.id ? 'Close' : '✎ Edit'}
+                      </button>
+                      <button className="btn btn-danger btn-sm" onMouseDown={e => e.stopPropagation()} onClick={async () => {
+                        await deleteDoc(doc(db, 'playlists', playlist.id))
+                        show('Learning path deleted.')
+                        loadPlaylists()
+                      }}>Delete</button>
+                    </div>
+                  </div>
+                  {editingPlaylistId === playlist.id && (
+                    <PlaylistEditor
+                      playlist={playlist}
+                      guides={guides}
+                      isNew={false}
+                      show={show}
+                      onSave={() => { setEditingPlaylistId(null); loadPlaylists() }}
+                      onCancel={() => setEditingPlaylistId(null)}
                     />
                   )}
                 </div>

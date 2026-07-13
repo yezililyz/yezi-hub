@@ -36,6 +36,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Learning paths (playlists): public can read published; admin can read/write everything (drafts too)
+    match /playlists/{playlistId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // Subscribers: anyone can sign up (create); only admin can read/manage the list
     match /subscribers/{docId} {
       allow create: if true;

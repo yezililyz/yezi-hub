@@ -10,6 +10,7 @@ import AdminHub from './components/AdminHub'
 import Login from './components/Login'
 import MyLibrary from './components/MyLibrary'
 import LoginPage from './components/LoginPage'
+import LearningPaths from './components/LearningPaths'
 
 function AdminRoute() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
@@ -142,6 +143,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<PublicHub />} />
         <Route path="/library" element={<MyLibrary />} />
+        <Route path="/paths" element={<LearningPaths />} />
+        <Route path="/paths/:id" element={<LearningPaths />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/guide/:id" element={<GuideViewer />} />
         <Route path="/admin" element={<AdminRoute />} />
