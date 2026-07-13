@@ -203,7 +203,18 @@ export const translateTexts = onCall(
     // the literal TRANSLATE_SEP string — otherwise a single substitution
     // silently merges two segments into one instead of raising an error.
     const parts = raw.split(/\s*[^\w,.]*§[^\w,.]*\s*/gu)
-    const translated = texts.map((t, i) => (parts[i]?.trim() || t))
+    // Beyond glyph substitution, the model can also silently merge/reformat
+    // many short segments in a large batch instead of respecting the
+    // separator at all (verified: 736 segments in -> 347 parts out, with
+    // finish_reason "stop", not truncation). Silently padding missing parts
+    // with the original English text hides this and lets most of a guide's
+    // translation get corrupted with no error. Fail loudly instead so the
+    // caller's chunked retry-at-half-size logic (see translateSegmentsSafe
+    // in AdminHub.tsx) can recover with a smaller, reliable batch.
+    if (parts.length !== texts.length) {
+      throw new HttpsError('internal', `Segment count mismatch: sent ${texts.length}, got ${parts.length} back from the model.`)
+    }
+    const translated = parts.map(p => p.trim())
 
     return { translated }
   }

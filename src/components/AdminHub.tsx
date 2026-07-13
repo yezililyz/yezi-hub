@@ -379,6 +379,50 @@ function collectHtmlTextNodes(htmlString: string): { doc: Document; nodes: Node[
   return { doc, nodes, texts }
 }
 
+// GPT-4o-mini does not reliably preserve a 1:1 segment count when a single
+// call is given hundreds of short/fragmentary text segments — it silently
+// merges or reformats them instead of respecting the separator, with no
+// error and no truncation (`finish_reason: "stop"`), e.g. 736 segments in
+// -> only 347 parts back out, corrupting/misaligning most of the guide's
+// French content. Batches of 20-50 segments were verified to reliably
+// return an exact 1:1 count. To make this self-healing even if a batch
+// still mismatches, validate the count and retry recursively at half size.
+const SAFE_CHUNK_SIZE = 40
+
+async function translateSegmentsSafe(texts: string[], apiKey: string): Promise<string[]> {
+  if (texts.length === 0) return []
+  if (texts.length === 1) {
+    try {
+      const [result] = await callOpenAITranslate(texts, apiKey)
+      return [result ?? texts[0]]
+    } catch (err) {
+      console.warn('[translate] single-segment translation failed, keeping original', err)
+      return texts
+    }
+  }
+  if (texts.length > SAFE_CHUNK_SIZE) {
+    const mid = Math.ceil(texts.length / 2)
+    const [a, b] = await Promise.all([
+      translateSegmentsSafe(texts.slice(0, mid), apiKey),
+      translateSegmentsSafe(texts.slice(mid), apiKey),
+    ])
+    return [...a, ...b]
+  }
+  try {
+    const result = await callOpenAITranslate(texts, apiKey)
+    if (result.length === texts.length) return result
+    console.warn(`[translate] segment count mismatch (sent ${texts.length}, got ${result.length}) — retrying at half size`)
+  } catch (err) {
+    console.warn('[translate] chunk translation failed — retrying at half size', err)
+  }
+  const mid = Math.ceil(texts.length / 2)
+  const [a, b] = await Promise.all([
+    translateSegmentsSafe(texts.slice(0, mid), apiKey),
+    translateSegmentsSafe(texts.slice(mid), apiKey),
+  ])
+  return [...a, ...b]
+}
+
 async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTranslated> {
   const chipsStr = (guide.chips || []).join(', ')
   const metaFields = [
@@ -389,26 +433,8 @@ async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTr
   ]
   const { doc, nodes, texts: htmlTexts } = collectHtmlTextNodes(guide.htmlContent || '')
 
-  // Split into chunks only if combined payload exceeds ~60K chars (fits in one call for most guides)
-  const MAX_CHARS = 60000
   const allTexts = [...metaFields, ...htmlTexts]
-  const totalChars = allTexts.reduce((s, t) => s + t.length, 0)
-
-  let translated: string[]
-  if (totalChars <= MAX_CHARS) {
-    // Single call — ideal for most guides
-    translated = await callOpenAITranslate(allTexts, apiKey)
-  } else {
-    // Rare large guide: meta in first call, HTML in subsequent calls
-    const metaT = await callOpenAITranslate(metaFields, apiKey)
-    const htmlT: string[] = []
-    const CHUNK = 400
-    for (let i = 0; i < htmlTexts.length; i += CHUNK) {
-      const chunk = await callOpenAITranslate(htmlTexts.slice(i, i + CHUNK), apiKey)
-      htmlT.push(...chunk)
-    }
-    translated = [...metaT, ...htmlT]
-  }
+  const translated = await translateSegmentsSafe(allTexts, apiKey)
 
   // Map translated segments back to metadata fields
   const title_fr       = translated[0] || guide.title
@@ -460,21 +486,9 @@ async function translateHtmlContent(htmlString: string | undefined | null, claud
   const origTexts = textNodes.map(n => (n.nodeValue || n.textContent || '').trim())
 
   if (claudeKey) {
-    // ── Claude path: ONE call for the whole guide with full context ──────────
-    // Split into chunks of ≤300 segments to stay within token limits, but
-    // most guides will be handled in a single call.
-    const CHUNK = 300
-    const allTranslated: string[] = []
-    for (let i = 0; i < origTexts.length; i += CHUNK) {
-      const slice = origTexts.slice(i, i + CHUNK)
-      try {
-        const translated = await callClaudeTranslate(slice, claudeKey)
-        allTranslated.push(...translated)
-      } catch (err) {
-        console.warn('Claude chunk failed, using originals for this chunk', err)
-        allTranslated.push(...slice)
-      }
-    }
+    // ── OpenAI path — safe-chunked with 1:1 count validation, see
+    // translateSegmentsSafe for why a large flat batch isn't reliable ──────
+    const allTranslated = await translateSegmentsSafe(origTexts, claudeKey)
     textNodes.forEach((n, i) => {
       const t = allTranslated[i] || origTexts[i]
       if (n.nodeValue !== null && n.nodeValue !== undefined) n.nodeValue = t
