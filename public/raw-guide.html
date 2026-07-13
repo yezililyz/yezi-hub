@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no">
 <head>
   <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Loading Guide...</title>
   <style>
@@ -147,26 +148,17 @@
         protectGlossaryNodes(docObj);
       }
 
-      // Auto-translate if no pre-translated French version was supplied
-      if (htmlLang === 'fr' && html) {
-        var needsAutoTranslate = !html.includes('google_translate_element');
-        if (needsAutoTranslate) {
-          var translateStyles = '<style>.goog-te-banner-frame,.goog-te-banner,.goog-tooltip,.goog-te-balloon,.goog-te-gadget-icon{display:none!important}body{top:0!important}.goog-logo-link,.goog-te-gadget,#google_translate_element,iframe.skiptranslate{display:none!important}</style>';
-          var translateScript = '<div id="google_translate_element"></div>' +
-            '<script type="text/javascript">function googleTranslateElementInit(){new google.translate.TranslateElement({pageLanguage:"en",includedLanguages:"fr",autoDisplay:false},"google_translate_element");var t=setInterval(function(){var s=document.querySelector("select.goog-te-combo");if(s){s.value="fr";s.dispatchEvent(new Event("change"));clearInterval(t)}},100)}<\/script>' +
-            '<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"><\/script>';
-
-          var headEl = docObj.querySelector('head') || docObj.documentElement;
-          var styleDiv = docObj.createElement('div');
-          styleDiv.innerHTML = translateStyles;
-          headEl.appendChild(styleDiv.firstElementChild);
-
-          var body = docObj.body || docObj.documentElement;
-          var scriptContainer = docObj.createElement('div');
-          scriptContainer.innerHTML = translateScript;
-          while (scriptContainer.firstChild) body.appendChild(scriptContainer.firstChild);
-        }
-      }
+      // Tell the browser's own translate feature (Chrome "select to translate",
+      // full-page translate bar, etc.) to leave this document alone entirely —
+      // this app's translation is the OpenAI pipeline (see AdminHub.tsx), never
+      // Google Translate, in any form, per explicit product requirement.
+      var htmlEl = docObj.documentElement;
+      htmlEl.setAttribute('translate', 'no');
+      var notranslateMeta = docObj.createElement('meta');
+      notranslateMeta.setAttribute('name', 'google');
+      notranslateMeta.setAttribute('content', 'notranslate');
+      var headForMeta = docObj.querySelector('head') || htmlEl;
+      headForMeta.insertBefore(notranslateMeta, headForMeta.firstChild);
 
       // Override window.print so Save & Export always routes through the parent's
       // auth gate regardless of which button element calls it.
