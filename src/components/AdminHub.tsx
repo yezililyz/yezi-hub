@@ -3,7 +3,7 @@ import ImageEditorModal from './ImageEditorModal'
 import PinnedCarousel from './PinnedCarousel'
 import {
   collection, addDoc, getDocs, updateDoc, deleteDoc,
-  doc, serverTimestamp, orderBy, query, getDoc, setDoc
+  doc, serverTimestamp, orderBy, query, getDoc, setDoc, Timestamp
 } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { signOut } from 'firebase/auth'
@@ -43,6 +43,7 @@ interface Guide {
   audioUrls_fr?: Record<string, string>
   audioGeneratedAt_en?: string
   audioGeneratedAt_fr?: string
+  created_at?: Timestamp
 }
 
 interface Section {
@@ -2482,6 +2483,46 @@ export default function AdminHub() {
             />
           </div>
         )}
+
+        {/* ── Upload Timeline ── */}
+        <div className="admin-section">
+          <h3>🕐 Upload Timeline</h3>
+          <div className="guide-list">
+            {[...guides]
+              .sort((a, b) => (b.created_at?.toMillis() ?? 0) - (a.created_at?.toMillis() ?? 0))
+              .map(guide => {
+                const section = sections.find(s => s.id === guide.sectionId)
+                const uploadedAt = guide.created_at?.toDate()
+                return (
+                  <div key={guide.id}>
+                    <div
+                      className="guide-row"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => window.open(`/guide/${guide.id}?lang=en`, '_blank')}
+                    >
+                      <span className="row-icon">{guide.icon}</span>
+                      <div className="row-info">
+                        <div className="row-title">{guide.title || <em style={{ color: 'var(--muted)' }}>Untitled</em>}</div>
+                        <div className="row-meta">
+                          {uploadedAt
+                            ? uploadedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                            : 'Unknown date'}
+                          {section && <> · <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>{section.name}</span></>}
+                          {' · '}
+                          {guide.published
+                            ? <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>Published</span>
+                            : <span style={{ color: '#b85030' }}>{guide.visibility === 'private' ? 'Private' : 'Draft'}</span>}
+                        </div>
+                      </div>
+                      <div className="row-actions">
+                        <span className="card-arrow">→</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
 
         {/* ── Site Settings ── */}
         <div className="admin-section">
