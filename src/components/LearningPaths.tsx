@@ -120,7 +120,7 @@ export default function LearningPaths() {
                   </p>
                 </div>
               </div>
-              <div className="guide-grid">
+              <div className="reader-grid">
                 {activeGuides.map((guide, i) => (
                   <div key={guide.id} className="path-guide-item" style={{ position: 'relative' }}>
                     <div className="path-guide-badge" style={{

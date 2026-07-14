@@ -111,7 +111,7 @@ export default function MyLibrary() {
             </button>
           </div>
         ) : (
-          <div className="guide-grid">
+          <div className="reader-grid">
             {guides.map(guide => (
               <GuideCard
                 key={guide.id}

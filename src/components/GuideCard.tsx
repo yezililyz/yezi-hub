@@ -41,13 +41,15 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
   const chips = chipsFr && chipsFr.length > 0 ? chipsFr : guide.chips
   const isPrivate = guide.visibility === 'private' || guide.private
 
+  const visibleChips = chips?.slice(0, 2) ?? []
+  const extraChipCount = (chips?.length ?? 0) - visibleChips.length
+
   return (
-    <div className="guide-card" onClick={onOpen}>
-      <div className="card-top">
-        <div className="card-icon">{guide.icon}</div>
-        <div className="card-meta">
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div className="card-tag">{tag}</div>
+    <div className="reader-card" onClick={onOpen}>
+      <div className="reader-card-banner">
+        <span className="reader-card-icon">{guide.icon}</span>
+        {(isNew || isPrivate) && (
+          <div className="reader-card-badges">
             {isNew && (
               <span className="card-new-badge">
                 {lang === 'fr' ? '✨ Nouveau' : '✨ New'}
@@ -59,13 +61,17 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
               </span>
             )}
           </div>
-          <div className="card-title">{title}</div>
-        </div>
+        )}
       </div>
-      <p className="card-desc">{desc}</p>
-      <div className="card-footer">
+      <div className="reader-card-body">
+        <div className="reader-card-tag">{tag}</div>
+        <div className="reader-card-title">{title}</div>
+        <p className="reader-card-desc">{desc}</p>
+      </div>
+      <div className="reader-card-footer">
         <div className="card-chips">
-          {chips?.map(c => <span key={c} className="chip">{c}</span>)}
+          {visibleChips.map(c => <span key={c} className="chip">{c}</span>)}
+          {extraChipCount > 0 && <span className="chip">+{extraChipCount}</span>}
         </div>
         <div className="card-actions" onClick={e => e.stopPropagation()}>
           <button className={`card-like-btn ${liked ? 'liked' : ''}`} onClick={onToggleLike} title={liked ? (lang === 'fr' ? 'Retirer le like' : 'Unlike') : (lang === 'fr' ? "J'aime" : 'Like')}>
@@ -73,7 +79,7 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
           </button>
           <button className={`card-save-btn ${saved ? 'saved' : ''}`} onClick={onToggleSave}>
             {saved
-              ? (lang === 'fr' ? '🔖 Dans ma bibliothèque' : '🔖 In Library')
+              ? (lang === 'fr' ? '🔖 Sauvé' : '🔖 Saved')
               : (lang === 'fr' ? '＋ Sauvegarder' : '＋ Save')}
           </button>
         </div>

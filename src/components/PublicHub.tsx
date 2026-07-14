@@ -627,7 +627,7 @@ export default function PublicHub() {
 
                     {/* Guide cards */}
                     {sectionGuides.length > 0 && (
-                      <div className="guide-grid">
+                      <div className="reader-grid">
                         {sectionGuides.map(guide => (
                           <GuideCard
                             key={guide.id}

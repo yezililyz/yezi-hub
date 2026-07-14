@@ -2487,36 +2487,38 @@ export default function AdminHub() {
         {/* ── Upload Timeline ── */}
         <div className="admin-section">
           <h3>🕐 Upload Timeline</h3>
-          <div className="guide-list">
+          <div className="upload-timeline">
             {[...guides]
               .sort((a, b) => (b.created_at?.toMillis() ?? 0) - (a.created_at?.toMillis() ?? 0))
               .map(guide => {
                 const section = sections.find(s => s.id === guide.sectionId)
                 const uploadedAt = guide.created_at?.toDate()
                 return (
-                  <div key={guide.id}>
+                  <div key={guide.id} className="timeline-row">
+                    <div className="timeline-date">
+                      {uploadedAt
+                        ? uploadedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                        : '—'}
+                    </div>
+                    <div className="timeline-rail">
+                      <span className="timeline-dot" />
+                    </div>
                     <div
-                      className="guide-row"
-                      style={{ cursor: 'pointer' }}
+                      className="timeline-pill"
                       onClick={() => window.open(`/guide/${guide.id}?lang=en`, '_blank')}
                     >
-                      <span className="row-icon">{guide.icon}</span>
-                      <div className="row-info">
-                        <div className="row-title">{guide.title || <em style={{ color: 'var(--muted)' }}>Untitled</em>}</div>
-                        <div className="row-meta">
-                          {uploadedAt
-                            ? uploadedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                            : 'Unknown date'}
-                          {section && <> · <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>{section.name}</span></>}
-                          {' · '}
+                      <span className="timeline-pill-icon">{guide.icon}</span>
+                      <div className="timeline-pill-body">
+                        <div className="timeline-pill-title">{guide.title || <em style={{ color: 'var(--muted)' }}>Untitled</em>}</div>
+                        <div className="timeline-pill-meta">
+                          {guide.tag && <span>{guide.tag}</span>}
+                          {section && <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>{section.name}</span>}
                           {guide.published
-                            ? <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>Published</span>
-                            : <span style={{ color: '#b85030' }}>{guide.visibility === 'private' ? 'Private' : 'Draft'}</span>}
+                            ? <span className="timeline-pill-status published">Published</span>
+                            : <span className="timeline-pill-status draft">{guide.visibility === 'private' ? 'Private' : 'Draft'}</span>}
                         </div>
                       </div>
-                      <div className="row-actions">
-                        <span className="card-arrow">→</span>
-                      </div>
+                      <span className="card-arrow">→</span>
                     </div>
                   </div>
                 )
