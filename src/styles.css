@@ -220,6 +220,15 @@ input, textarea { font-family: inherit; }
   cursor: pointer;
 }
 .guide-card:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow); }
+
+/* Learning path guide items: the numbered badge is a sibling of .guide-card
+   (absolutely positioned), so it doesn't move with the card's own :hover
+   transform on its own — anchor the hover effect on the wrapper instead so
+   the badge and card shift together as one unit rather than visibly
+   detaching from each other. */
+.path-guide-item { transition: transform .12s; }
+.path-guide-item:hover { transform: translate(-2px, -2px); }
+.path-guide-item:hover .guide-card { transform: none; box-shadow: var(--shadow); }
 .card-top { display: flex; align-items: flex-start; gap: 14px; }
 .card-icon {
   width: 46px; height: 46px;

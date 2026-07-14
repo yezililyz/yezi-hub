@@ -122,8 +122,8 @@ export default function LearningPaths() {
               </div>
               <div className="guide-grid">
                 {activeGuides.map((guide, i) => (
-                  <div key={guide.id} style={{ position: 'relative' }}>
-                    <div style={{
+                  <div key={guide.id} className="path-guide-item" style={{ position: 'relative' }}>
+                    <div className="path-guide-badge" style={{
                       position: 'absolute', top: -10, left: -10, zIndex: 1,
                       background: 'var(--orange)', color: '#fff', fontWeight: 700,
                       fontFamily: 'var(--mono)', fontSize: 12, width: 26, height: 26,
