@@ -86,6 +86,19 @@ function MicIcon() {
   )
 }
 
+function FeatherIcon() {
+  return (
+    <IconFrame>
+      <path d="M42 10 C 30 10, 18 22, 18 38 C 18 46, 22 50, 22 50 C 22 50, 44 48, 50 26 C 52 18, 48 12, 42 10 Z" />
+      <path d="M22 50 L44 22" />
+      <path d="M28 42 L34 36" />
+      <path d="M22 50 L14 58" />
+      <path d="M6 40 L12 42" />
+      <path d="M6 48 L13 48" />
+    </IconFrame>
+  )
+}
+
 function DocumentIcon() {
   return (
     <IconFrame>
@@ -105,6 +118,7 @@ const COVER_STYLES: Record<string, { bg: string; icon: () => React.ReactNode }> 
   'Field Guide': { bg: '#6d8c6b', icon: CompassIcon },
   'Toolkit': { bg: '#b8934a', icon: ToolboxIcon },
   'Interview Guide': { bg: '#7d5f8a', icon: MicIcon },
+  'Personal Notes': { bg: '#6f6ba0', icon: FeatherIcon },
 }
 const DEFAULT_STYLE = { bg: '#8a7d70', icon: DocumentIcon }
 

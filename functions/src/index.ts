@@ -276,15 +276,21 @@ export const extractMetadata = onCall(
       throw new HttpsError('invalid-argument', 'htmlContent and apiKey are required.')
     }
 
+    // Keep "tag" and "level" in sync with CONTENT_TYPES/LEVELS in
+    // AdminHub.tsx — this is a controlled taxonomy (used to pick the
+    // guide's cover art, filter chips, etc.), not freeform text, so the
+    // model must pick exactly one of these values rather than inventing
+    // its own label.
     const systemPrompt = `Extract or generate the following metadata from the provided HTML content.
 Return ONLY a strictly valid JSON object matching the schema. No markdown, no prefixes.
 {
   "title": "Title of the document (keep it short)",
   "description": "A 1-2 sentence compelling summary of what this document is about.",
-  "tag": "A single classification word (e.g. Playbook, Template, Guide, Memo, Roadmap)",
+  "tag": "EXACTLY one of: Playbook, Framework, Case Study/Teardown, Field Guide, Toolkit, Interview Guide, Personal Notes — pick whichever best matches the content's actual structure and purpose",
+  "level": "EXACTLY one of: Beginner, Intermediate, Advanced — your best judgment of the reader experience level this content assumes or targets",
   "chips": ["array", "of", "up", "to", "3", "short", "tags", "e.g.", "Linear agent", "Product Strategy"]
 }
-If a field cannot be reasonably determined, leave it as an empty string (or empty array for chips).`
+If a field cannot be reasonably determined, leave it as an empty string (or empty array for chips) — but always make your best guess for "tag" and "level" rather than leaving them empty, since every guide needs one of each.`
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

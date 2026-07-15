@@ -149,6 +149,7 @@ const CONTENT_TYPES: { en: string; fr: string }[] = [
   { en: 'Field Guide', fr: 'Guide de référence' },
   { en: 'Toolkit', fr: 'Boîte à outils' },
   { en: 'Interview Guide', fr: "Guide d'entretien" },
+  { en: 'Personal Notes', fr: 'Notes personnelles' },
 ]
 const LEVELS: { en: string; fr: string }[] = [
   { en: 'Beginner', fr: 'Débutant' },
@@ -2289,29 +2290,36 @@ export default function AdminHub() {
       const translatedHtml = await translateHtmlContent(content, key)
       setHtmlContentFr(translatedHtml)
 
-      const [title_fr, description_fr, , chips_fr] = await Promise.all([
+      const [title_fr, description_fr, , chips_fr, autoMeta] = await Promise.all([
         translateText(parsed.title, key),
         translateText(parsed.description, key),
         translateText(parsed.tag, key),
         translateText(parsed.chips, key).then(res => res.replace(/[{<〈\[(]?§[}>〉\])]?/g, ',')),
+        key ? callOpenAIExtractMetadata(content, key) : Promise.resolve({}),
       ])
 
       // parsed.tag is a freeform guess from the HTML (h1/meta keywords) — not
       // a match for the controlled content-type vocabulary, so don't carry it
-      // (or its translation) forward. Leave content type/level blank; the
-      // admin picks from the dropdown explicitly.
+      // forward. Instead, auto-suggest Content Type/Level via the LLM
+      // (autoMeta) when a key is available, validated against the actual
+      // controlled vocabularies — the admin can still change either dropdown
+      // before publishing if it guessed wrong.
+      const suggestedTag = CONTENT_TYPES.some(t => t.en === autoMeta.tag) ? autoMeta.tag : ''
+      const suggestedLevel = LEVELS.some(l => l.en === autoMeta.level) ? autoMeta.level : ''
       setForm({
         ...parsed,
-        tag: '',
+        tag: suggestedTag,
         title_fr,
         description_fr,
         tag_fr: '',
         chips_fr,
-        level: '',
+        level: suggestedLevel,
         level_fr: '',
       })
       setNewFileFrUpload(null)
-      show('French translation generated successfully!')
+      show(suggestedTag || suggestedLevel
+        ? `French translation generated! Auto-detected: ${[suggestedTag, suggestedLevel].filter(Boolean).join(' · ')} — review before publishing.`
+        : 'French translation generated successfully!')
     } catch (err) {
       setForm({
         ...parsed,
