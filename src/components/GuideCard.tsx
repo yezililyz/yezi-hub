@@ -48,6 +48,10 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
 
   return (
     <div className="reader-card" onClick={onOpen}>
+      <div className="reader-card-top">
+        <div className="reader-card-tag">{tag}</div>
+        <div className="reader-card-title">{title}</div>
+      </div>
       <div className="reader-card-banner">
         <CoverArt contentType={guide.tag} />
         {(isNew || isPrivate) && (
@@ -66,8 +70,6 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
         )}
       </div>
       <div className="reader-card-body">
-        <div className="reader-card-tag">{tag}</div>
-        <div className="reader-card-title">{title}</div>
         <p className="reader-card-desc">{desc}</p>
       </div>
       <div className="reader-card-footer">
