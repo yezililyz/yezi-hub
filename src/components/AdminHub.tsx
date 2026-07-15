@@ -405,7 +405,7 @@ function collectHtmlTextNodes(htmlString: string): { doc: Document; nodes: Node[
 // still mismatches, validate the count and retry recursively at half size.
 const SAFE_CHUNK_SIZE = 40
 
-async function translateSegmentsSafe(texts: string[], apiKey: string): Promise<string[]> {
+async function translateSegmentsCore(texts: string[], apiKey: string): Promise<string[]> {
   if (texts.length === 0) return []
   if (texts.length === 1) {
     try {
@@ -419,8 +419,8 @@ async function translateSegmentsSafe(texts: string[], apiKey: string): Promise<s
   if (texts.length > SAFE_CHUNK_SIZE) {
     const mid = Math.ceil(texts.length / 2)
     const [a, b] = await Promise.all([
-      translateSegmentsSafe(texts.slice(0, mid), apiKey),
-      translateSegmentsSafe(texts.slice(mid), apiKey),
+      translateSegmentsCore(texts.slice(0, mid), apiKey),
+      translateSegmentsCore(texts.slice(mid), apiKey),
     ])
     return [...a, ...b]
   }
@@ -433,10 +433,29 @@ async function translateSegmentsSafe(texts: string[], apiKey: string): Promise<s
   }
   const mid = Math.ceil(texts.length / 2)
   const [a, b] = await Promise.all([
-    translateSegmentsSafe(texts.slice(0, mid), apiKey),
-    translateSegmentsSafe(texts.slice(mid), apiKey),
+    translateSegmentsCore(texts.slice(0, mid), apiKey),
+    translateSegmentsCore(texts.slice(mid), apiKey),
   ])
   return [...a, ...b]
+}
+
+// Guides using the newer Content Type/Level taxonomy often have a genuinely
+// empty `tag` field. Sending an empty string to the model as its own
+// segment doesn't reliably come back empty — it can produce a clarifying/
+// refusal sentence instead (seen live: tag_fr got set to "Please provide
+// the segments you would like me to translate to French."). Strip
+// empty/whitespace-only segments out before hitting the API at all, and
+// splice empty strings back into their original positions afterward.
+async function translateSegmentsSafe(texts: string[], apiKey: string): Promise<string[]> {
+  const nonEmptyIndices: number[] = []
+  const nonEmptyTexts: string[] = []
+  texts.forEach((t, i) => { if (t.trim()) { nonEmptyIndices.push(i); nonEmptyTexts.push(t) } })
+
+  const translatedNonEmpty = await translateSegmentsCore(nonEmptyTexts, apiKey)
+
+  const result = texts.map(() => '')
+  nonEmptyIndices.forEach((originalIdx, i) => { result[originalIdx] = translatedNonEmpty[i] })
+  return result
 }
 
 async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTranslated> {
@@ -460,8 +479,11 @@ async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTr
   // to keep list items distinct, but doesn't reliably reproduce the exact
   // bracket glyphs we asked for (e.g. ⟨§⟩ instead of 〈§〉) — match on § alone,
   // stripping whatever non-comma punctuation/whitespace surrounds it, so any
-  // bracket variant is handled instead of just one specific pair.
-  const chips_fr       = (translated[3] || chipsStr).replace(/[^\w,]*§[^\w,]*/gu, ',').split(',').map(c => c.trim()).filter(Boolean)
+  // bracket variant is handled instead of just one specific pair. Use
+  // \p{L}/\p{N} (Unicode letter/number), not \w (ASCII-only) — otherwise a
+  // chip starting with an accented capital right against § (e.g. "§Étude")
+  // has its leading letter eaten as if it were separator punctuation.
+  const chips_fr       = (translated[3] || chipsStr).replace(/[^\p{L}\p{N},]*§[^\p{L}\p{N},]*/gu, ',').split(',').map(c => c.trim()).filter(Boolean)
   const htmlTranslated = translated.slice(4)
 
   // Reassemble HTML

@@ -202,7 +202,11 @@ export const translateTexts = onCall(
     // split tolerantly on any punctuation/whitespace around § rather than
     // the literal TRANSLATE_SEP string — otherwise a single substitution
     // silently merges two segments into one instead of raising an error.
-    const parts = raw.split(/\s*[^\w,.]*§[^\w,.]*\s*/gu)
+    // IMPORTANT: use \p{L}/\p{N} (Unicode letter/number), not \w — \w is
+    // ASCII-only, so a French segment starting with an accented capital
+    // right against the separator (e.g. "§Étude") had its leading "É"
+    // swallowed as if it were separator punctuation ("tude" came out).
+    const parts = raw.split(/\s*[^\p{L}\p{N},.]*§[^\p{L}\p{N},.]*\s*/gu)
     // Beyond glyph substitution, the model can also silently merge/reformat
     // many short segments in a large batch instead of respecting the
     // separator at all (verified: 736 segments in -> 347 parts out, with
