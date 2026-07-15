@@ -286,11 +286,24 @@ input, textarea { font-family: inherit; }
   padding: 14px 18px 0;
   display: flex; flex-direction: column; gap: 5px;
 }
-.reader-card-tag {
+.reader-card-tags {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.reader-card-pill {
   font-family: var(--mono); font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .06em; font-size: 10px;
+  letter-spacing: .04em; font-size: 9.5px;
+  color: var(--orange-deep);
+  background: var(--orange-soft);
+  border: 1px solid rgba(207,125,40,0.25);
+  border-radius: 99px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.reader-card-pill-outline {
   color: var(--muted);
+  background: transparent;
+  border-color: #e2d9c9;
 }
 .reader-card-title {
   font-family: "Archivo", sans-serif; font-weight: 800;
