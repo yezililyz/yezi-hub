@@ -1,3 +1,5 @@
+import CoverArt from './CoverArt'
+
 interface GuideCardData {
   id: string
   title: string
@@ -47,7 +49,7 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
   return (
     <div className="reader-card" onClick={onOpen}>
       <div className="reader-card-banner">
-        <span className="reader-card-icon">{guide.icon}</span>
+        <CoverArt contentType={guide.tag} />
         {(isNew || isPrivate) && (
           <div className="reader-card-badges">
             {isNew && (

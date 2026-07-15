@@ -233,16 +233,34 @@ input, textarea { font-family: inherit; }
 .reader-card:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow); }
 .reader-card-banner {
   position: relative;
-  height: 72px;
-  background: var(--orange-soft);
+  height: 108px;
   border-bottom: 2px solid var(--line);
-  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
-.reader-card-icon { font-size: 30px; }
+.cover-art {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.cover-art-frame {
+  width: 56px; height: 56px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 3px 3px 0 rgba(28,24,20,0.25);
+}
 .reader-card-badges {
   position: absolute; top: 8px; right: 8px;
   display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
+/* Cover art backgrounds vary per content type, so badges need an opaque
+   backing to stay legible regardless of which cover color sits behind them
+   (the default semi-transparent badge fill was designed for the cream page
+   background, not an arbitrary solid cover color). */
+.reader-card-badges .card-new-badge,
+.reader-card-badges .card-private-badge {
+  background: var(--paper);
 }
 .reader-card-body {
   padding: 14px 16px 0;
