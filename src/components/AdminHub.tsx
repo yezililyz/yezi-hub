@@ -1738,6 +1738,7 @@ export default function AdminHub() {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [showNewPlaylist, setShowNewPlaylist] = useState(false)
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
+  const [timelineExpanded, setTimelineExpanded] = useState(true)
   const { toast, show } = useToast()
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -2508,44 +2509,52 @@ export default function AdminHub() {
 
         {/* ── Upload Timeline ── */}
         <div className="admin-section">
-          <h3>🕐 Upload Timeline</h3>
-          <div className="upload-timeline">
-            {[...guides]
+          <h3
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            onClick={() => setTimelineExpanded(v => !v)}
+          >
+            <span>🕐 Upload Timeline</span>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{timelineExpanded ? '▾ Collapse' : '▸ Expand'}</span>
+          </h3>
+          {timelineExpanded && (() => {
+            const dayGroups = new Map<string, { label: string; guides: typeof guides }>()
+            ;[...guides]
               .sort((a, b) => (b.created_at?.toMillis() ?? 0) - (a.created_at?.toMillis() ?? 0))
-              .map(guide => {
-                const section = sections.find(s => s.id === guide.sectionId)
+              .forEach(guide => {
                 const uploadedAt = guide.created_at?.toDate()
-                return (
-                  <div key={guide.id} className="timeline-row">
-                    <div className="timeline-date">
-                      {uploadedAt
-                        ? uploadedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                        : '—'}
-                    </div>
+                const key = uploadedAt ? uploadedAt.toDateString() : 'unknown'
+                const label = uploadedAt ? uploadedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'
+                if (!dayGroups.has(key)) dayGroups.set(key, { label, guides: [] })
+                dayGroups.get(key)!.guides.push(guide)
+              })
+            const groups = [...dayGroups.values()]
+            return (
+              <div className="upload-timeline">
+                {groups.map((group, gi) => (
+                  <div key={group.label + gi} className="timeline-row">
+                    <div className="timeline-date">{group.label}</div>
                     <div className="timeline-rail">
                       <span className="timeline-dot" />
                     </div>
-                    <div
-                      className="timeline-pill"
-                      onClick={() => window.open(`/guide/${guide.id}?lang=en`, '_blank')}
-                    >
-                      <span className="timeline-pill-icon">{guide.icon}</span>
-                      <div className="timeline-pill-body">
-                        <div className="timeline-pill-title">{guide.title || <em style={{ color: 'var(--muted)' }}>Untitled</em>}</div>
-                        <div className="timeline-pill-meta">
-                          {guide.tag && <span>{guide.tag}</span>}
-                          {section && <span style={{ color: 'var(--orange-deep)', fontWeight: 600 }}>{section.name}</span>}
-                          {guide.published
-                            ? <span className="timeline-pill-status published">Published</span>
-                            : <span className="timeline-pill-status draft">{guide.visibility === 'private' ? 'Private' : 'Draft'}</span>}
+                    <div className="timeline-clips">
+                      {group.guides.map(guide => (
+                        <div
+                          key={guide.id}
+                          className="timeline-clip"
+                          title={`${guide.title}${guide.published ? ' — Published' : guide.visibility === 'private' ? ' — Private' : ' — Draft'}`}
+                          onClick={() => window.open(`/guide/${guide.id}?lang=en`, '_blank')}
+                        >
+                          <span className="timeline-clip-icon">{guide.icon}</span>
+                          <span className="timeline-clip-title">{guide.title || 'Untitled'}</span>
+                          <span className={`timeline-clip-dot ${guide.published ? 'published' : 'draft'}`} />
                         </div>
-                      </div>
-                      <span className="card-arrow">→</span>
+                      ))}
                     </div>
                   </div>
-                )
-              })}
-          </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
 
         {/* ── Site Settings ── */}
