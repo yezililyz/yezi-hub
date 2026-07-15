@@ -224,6 +224,50 @@ export const translateTexts = onCall(
   }
 )
 
+// ── judgeTranslation — general-purpose OpenAI chat call for post-translation
+// quality review. Same CORS-workaround reasoning as translateTexts: OpenAI
+// has no CORS headers for browser origins, so this must be relayed through
+// a Cloud Function. Unlike translateTexts, this isn't translation-specific —
+// it takes an arbitrary prompt (built client-side) and returns the raw
+// response text, used by AdminHub.tsx to have the model judge whether a
+// just-produced French translation actually reads well, as a second check
+// beyond the deterministic refusal-pattern scan.
+export const judgeTranslation = onCall(
+  { cors: true },
+  async (request) => {
+    const { prompt, apiKey } = request.data as { prompt: string; apiKey: string }
+
+    if (!prompt || typeof prompt !== 'string') {
+      throw new HttpsError('invalid-argument', 'prompt must be a non-empty string.')
+    }
+    if (!apiKey) {
+      throw new HttpsError('invalid-argument', 'apiKey is required.')
+    }
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new HttpsError('internal', `OpenAI API error ${res.status}: ${err}`)
+    }
+
+    const data = await res.json() as { choices?: { message?: { content?: string } }[] }
+    const verdict = (data.choices?.[0]?.message?.content || '').trim()
+    return { verdict }
+  }
+)
+
 export const extractMetadata = onCall(
   { cors: true },
   async (request) => {

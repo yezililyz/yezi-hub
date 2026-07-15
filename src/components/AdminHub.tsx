@@ -316,6 +316,14 @@ async function callOpenAITranslate(texts: string[], apiKey: string): Promise<str
 // Alias so all callers remain unchanged
 const callClaudeTranslate = callOpenAITranslate
 
+async function callJudge(prompt: string, apiKey: string): Promise<string> {
+  const judgeFn = httpsCallable<{ prompt: string; apiKey: string }, { verdict: string }>(
+    getFunctions(), 'judgeTranslation'
+  )
+  const result = await judgeFn({ prompt, apiKey })
+  return result.data.verdict
+}
+
 async function callOpenAIExtractMetadata(htmlContent: string, apiKey: string): Promise<any> {
   if (!htmlContent || !apiKey) return {}
   const extractFn = httpsCallable<{ htmlContent: string; apiKey: string }, { metadataStr: string }>(
@@ -439,6 +447,48 @@ async function translateSegmentsCore(texts: string[], apiKey: string): Promise<s
   return [...a, ...b]
 }
 
+// A short/unusual segment (a lone icon glyph, a near-empty label, an
+// isolated fragment with no sentence context) can make the model respond
+// with a clarifying question or refusal instead of a translation — even
+// when the count of returned parts still matches the count sent, so this
+// is NOT caught by translateSegmentsCore's count-mismatch retry. Seen live
+// in guide body text: "I'm sorry, but it seems that there are no text
+// segments provided for translation..." stored as if it were the actual
+// translated heading.
+const REFUSAL_PATTERNS = [
+  /I'm sorry,?\s*but/i,
+  /it (appears|seems) that there are no/i,
+  /please provide the (text )?segments?/i,
+  /I('ll| will) be happy to assist/i,
+  /I cannot assist with that/i,
+  /sorry, I can't assist/i,
+  /as an AI language model/i,
+  /I don't have (enough )?(context|information)/i,
+  /could you (please )?clarify/i,
+  /no text (was|is) provided/i,
+  /provided a placeholder/i,
+  // The model can refuse in French too, since it's mid-way through a
+  // French-output task when it decides to ask for clarification instead.
+  /veuillez fournir/i,
+  /je n'ai pas (assez|suffisamment)/i,
+  /pourriez[- ]vous (clarifier|préciser)/i,
+  /aucun (texte|segment)/i,
+]
+function looksLikeRefusal(s: string): boolean {
+  return REFUSAL_PATTERNS.some(p => p.test(s))
+}
+
+// A segment with no letters at all (a lone arrow, checkmark, bullet, emoji,
+// or punctuation glyph) has nothing to translate — sending it to the model
+// in isolation is exactly what triggers a refusal/clarification response in
+// the first place (seen live, repeatedly: "→", "▼", "☐" etc. as their own
+// segment came back as "Please provide the text segment..."). Skip the API
+// entirely for these and keep them unchanged, rather than fighting an
+// open-ended set of refusal phrasings after the fact.
+function hasNoLetters(s: string): boolean {
+  return !/\p{L}/u.test(s)
+}
+
 // Guides using the newer Content Type/Level taxonomy often have a genuinely
 // empty `tag` field. Sending an empty string to the model as its own
 // segment doesn't reliably come back empty — it can produce a clarifying/
@@ -447,13 +497,41 @@ async function translateSegmentsCore(texts: string[], apiKey: string): Promise<s
 // empty/whitespace-only segments out before hitting the API at all, and
 // splice empty strings back into their original positions afterward.
 async function translateSegmentsSafe(texts: string[], apiKey: string): Promise<string[]> {
+  // Skip the API entirely for segments with nothing to translate: empty/
+  // whitespace-only, or symbol-only (arrows, checkmarks, bullets, emoji,
+  // punctuation) — both are the exact conditions that make the model
+  // respond with a refusal/clarification instead of a translation.
   const nonEmptyIndices: number[] = []
   const nonEmptyTexts: string[] = []
-  texts.forEach((t, i) => { if (t.trim()) { nonEmptyIndices.push(i); nonEmptyTexts.push(t) } })
+  texts.forEach((t, i) => { if (t.trim() && !hasNoLetters(t)) { nonEmptyIndices.push(i); nonEmptyTexts.push(t) } })
 
   const translatedNonEmpty = await translateSegmentsCore(nonEmptyTexts, apiKey)
 
-  const result = texts.map(() => '')
+  // Safety net: a refusal/clarification sentence can come back for one
+  // segment in an otherwise-correct batch (count still matches, so the
+  // core function's own retry logic never sees anything wrong). Re-attempt
+  // each flagged segment in isolation once; if it refuses again too, fall
+  // back to the original English rather than ever store the refusal text.
+  const retryIndices: number[] = []
+  translatedNonEmpty.forEach((t, i) => { if (looksLikeRefusal(t)) retryIndices.push(i) })
+  if (retryIndices.length > 0) {
+    console.warn(`[translate] ${retryIndices.length} segment(s) came back as a refusal/clarification — retrying individually`)
+    await Promise.all(retryIndices.map(async i => {
+      const original = nonEmptyTexts[i]
+      try {
+        const [retried] = await callOpenAITranslate([original], apiKey)
+        translatedNonEmpty[i] = (retried && !looksLikeRefusal(retried)) ? retried : original
+      } catch {
+        translatedNonEmpty[i] = original
+      }
+    }))
+  }
+
+  // Default every position to its original value — correct both for truly
+  // empty/whitespace segments (nothing to translate, stay empty) and for
+  // symbol-only segments we deliberately skipped (must keep their original
+  // glyph, not become blank).
+  const result = [...texts]
   nonEmptyIndices.forEach((originalIdx, i) => { result[originalIdx] = translatedNonEmpty[i] })
   return result
 }
@@ -496,6 +574,55 @@ async function translateGuideFull(guide: Guide, apiKey: string): Promise<GuideTr
   const htmlContent_fr = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML
 
   return { title_fr, description_fr, tag_fr, chips_fr, htmlContent_fr }
+}
+
+interface TranslationJudgeResult { pass: boolean; reason?: string }
+
+function extractVisibleText(html: string): string {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  doc.querySelectorAll('script, style, noscript, code').forEach(el => el.remove())
+  return (doc.body?.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
+// Post-translation quality gate, run once per guide right after
+// translateGuideFull. Two layers:
+// 1. A free, deterministic scan for leaked LLM refusal/clarification text —
+//    this is the exact failure mode seen in production (a short/isolated
+//    segment makes the model reply "I'm sorry, but it seems that there are
+//    no text segments..." instead of translating), and it's cheap to catch
+//    with certainty rather than relying on the LLM to notice its own past
+//    mistake.
+// 2. A genuine LLM judgment call on a text sample, for subtler quality
+//    issues (awkward phrasing, incomplete sentences, leftover English) that
+//    no regex can catch.
+async function judgeTranslationQuality(result: GuideTranslated, apiKey: string): Promise<TranslationJudgeResult> {
+  const bodyText = extractVisibleText(result.htmlContent_fr)
+  const assembled = [result.title_fr, result.description_fr, result.tag_fr, ...(result.chips_fr || []), bodyText].join(' ')
+  if (looksLikeRefusal(assembled)) {
+    return { pass: false, reason: 'Contains a leaked LLM refusal/clarification message instead of real translated content.' }
+  }
+
+  const prompt = `You are a meticulous French-language quality reviewer for a product management knowledge hub. Judge whether the following French translation is natural, complete, and easy to scan for a reader — flag it if there is leftover English, garbled or truncated words, placeholder/error text, or repeated separator artifacts. Do not flag minor stylistic preferences or kept English jargon terms (PM, OKR, API, SaaS, etc. are expected to stay in English).
+
+Title: ${result.title_fr}
+Description: ${result.description_fr}
+Tags: ${(result.chips_fr || []).join(', ')}
+
+Body sample (may be truncated):
+${bodyText.slice(0, 4000)}
+
+Respond with EXACTLY one line: "PASS" if this reads naturally and is publication-ready, or "FAIL: <short reason>" if there is a real problem.`
+
+  try {
+    const verdict = await callJudge(prompt, apiKey)
+    if (/^PASS\b/i.test(verdict)) return { pass: true }
+    const reasonMatch = verdict.match(/^FAIL:\s*(.+)/i)
+    return { pass: false, reason: reasonMatch ? reasonMatch[1] : verdict }
+  } catch (err) {
+    console.warn('[translate] quality judge call failed — skipping quality gate for this guide', err)
+    return { pass: true } // don't block a save just because the judge call itself failed
+  }
 }
 
 async function translateHtmlContent(htmlString: string | undefined | null, claudeKey?: string): Promise<string> {
@@ -1822,6 +1949,7 @@ export default function AdminHub() {
       setBulkProgress({ current: 0, total })
       
       let count = 0
+      const flaggedGuides: string[] = []
       for (let idx = 0; idx < total; idx++) {
         const d = snap.docs[idx]
         const data = d.data() as Guide
@@ -1831,16 +1959,24 @@ export default function AdminHub() {
         const t0 = Date.now()
         setTranslateStatus(`[${idx+1}/${total}] ${engine} → ${data.title || 'Untitled'}`)
 
+        let skipSave = false
         if (key && data.htmlContent) {
           // ── OpenAI fast path: 1-2 API calls cover ALL fields + HTML ──────
           try {
             console.log(`[translate] START ${engine} → "${data.title}" (${data.htmlContent.length} HTML chars)`)
             const result = await translateGuideFull(data, key)
-            updates.title_fr = result.title_fr
-            updates.description_fr = result.description_fr
-            updates.tag_fr = result.tag_fr
-            updates.chips_fr = result.chips_fr
-            updates.htmlContent_fr = result.htmlContent_fr
+            const judged = await judgeTranslationQuality(result, key)
+            if (!judged.pass) {
+              console.warn(`[translate] quality check failed for "${data.title}": ${judged.reason}`)
+              flaggedGuides.push(data.title || d.id)
+              skipSave = true
+            } else {
+              updates.title_fr = result.title_fr
+              updates.description_fr = result.description_fr
+              updates.tag_fr = result.tag_fr
+              updates.chips_fr = result.chips_fr
+              updates.htmlContent_fr = result.htmlContent_fr
+            }
           } catch (err) {
             console.warn('[translate] OpenAI failed, falling back to Google Translate', err)
             if (data.title) updates.title_fr = await translateText(data.title)
@@ -1860,14 +1996,16 @@ export default function AdminHub() {
 
         console.log(`[translate] DONE "${data.title}" in ${((Date.now()-t0)/1000).toFixed(1)}s`)
 
-        if (Object.keys(updates).length > 0) {
+        if (!skipSave && Object.keys(updates).length > 0) {
           await updateDoc(doc(db, 'guides', d.id), updates)
           count++
         }
 
         setBulkProgress({ current: idx + 1, total })
       }
-      show(`Bulk translation complete! Force-updated ${count} guides.`)
+      show(flaggedGuides.length > 0
+        ? `Bulk translation complete! Force-updated ${count} guides. ${flaggedGuides.length} skipped a failed quality check: ${flaggedGuides.join(', ')} — review and retry individually.`
+        : `Bulk translation complete! Force-updated ${count} guides.`)
       loadGuides()
     } catch (err) {
       console.error(err)
@@ -1888,6 +2026,7 @@ export default function AdminHub() {
     setTranslatingAll(true)
     setBulkProgress({ current: 0, total: missing.length })
     try {
+      const flaggedGuides: string[] = []
       for (let i = 0; i < missing.length; i++) {
         const g = missing[i]
         const key = openAIKey || undefined
@@ -1897,16 +2036,24 @@ export default function AdminHub() {
         console.log(`[translate] START ${engine} → "${g.title}" (${g.htmlContent?.length || 0} HTML chars)`)
 
         const updates: any = {}
+        let skipSave = false
 
         if (key && g.htmlContent) {
           // ── OpenAI fast path: 1-2 API calls cover ALL fields + HTML ──────
           try {
             const result = await translateGuideFull(g, key)
-            if (!g.title_fr)       updates.title_fr       = result.title_fr
-            if (!g.description_fr) updates.description_fr = result.description_fr
-            if (!g.tag_fr)         updates.tag_fr         = result.tag_fr
-            if (!g.chips_fr?.length) updates.chips_fr     = result.chips_fr
-            updates.htmlContent_fr = result.htmlContent_fr
+            const judged = await judgeTranslationQuality(result, key)
+            if (!judged.pass) {
+              console.warn(`[translate] quality check failed for "${g.title}": ${judged.reason}`)
+              flaggedGuides.push(g.title || g.id)
+              skipSave = true
+            } else {
+              if (!g.title_fr)       updates.title_fr       = result.title_fr
+              if (!g.description_fr) updates.description_fr = result.description_fr
+              if (!g.tag_fr)         updates.tag_fr         = result.tag_fr
+              if (!g.chips_fr?.length) updates.chips_fr     = result.chips_fr
+              updates.htmlContent_fr = result.htmlContent_fr
+            }
           } catch (err) {
             console.warn('[translate] OpenAI failed, falling back to Google Translate', err)
             // fallthrough to slow path below
@@ -1925,14 +2072,16 @@ export default function AdminHub() {
           if (g.htmlContent) updates.htmlContent_fr = await translateHtmlContent(g.htmlContent)
         }
 
-        if (Object.keys(updates).length > 0) {
+        if (!skipSave && Object.keys(updates).length > 0) {
           await updateDoc(doc(db, 'guides', g.id), updates)
         }
         console.log(`[translate] DONE "${g.title}" in ${((Date.now()-t0)/1000).toFixed(1)}s`)
         setBulkProgress({ current: i + 1, total: missing.length })
       }
       setTranslateStatus('')
-      show(`Done! Translated ${missing.length} guide(s).`)
+      show(flaggedGuides.length > 0
+        ? `Done! Translated ${missing.length - flaggedGuides.length} guide(s). ${flaggedGuides.length} skipped a failed quality check: ${flaggedGuides.join(', ')} — review and retry individually.`
+        : `Done! Translated ${missing.length} guide(s).`)
       loadGuides()
     } catch (err) {
       console.error(err)
@@ -2291,6 +2440,11 @@ export default function AdminHub() {
     setTranslatingGuideId(guide.id)
     try {
       const result = await translateGuideFull(guide, openAIKey)
+      const judged = await judgeTranslationQuality(result, openAIKey)
+      if (!judged.pass) {
+        show(`Translation quality check failed for "${guide.title}": ${judged.reason} — not saved. Try again.`, 'error')
+        return
+      }
       await updateDoc(doc(db, 'guides', guide.id), {
         title_fr: result.title_fr,
         description_fr: result.description_fr,
