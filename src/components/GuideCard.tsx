@@ -9,8 +9,6 @@ interface GuideCardData {
   icon: string
   tag: string
   tag_fr?: string
-  level?: string
-  level_fr?: string
   chips: string[]
   chips_fr?: string[]
   visibility?: 'public' | 'private' | 'draft'
@@ -40,8 +38,6 @@ function isClean(s: string | undefined | null): s is string {
 export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, onToggleLike, onToggleSave }: GuideCardProps) {
   const title = lang === 'fr' && isClean(guide.title_fr) ? guide.title_fr : guide.title
   const desc = lang === 'fr' && isClean(guide.description_fr) ? guide.description_fr : guide.description
-  const tag = lang === 'fr' && isClean(guide.tag_fr) ? guide.tag_fr : guide.tag
-  const level = lang === 'fr' && isClean(guide.level_fr) ? guide.level_fr : guide.level
   const chipsFr = lang === 'fr' && Array.isArray(guide.chips_fr) ? guide.chips_fr.filter(isClean) : undefined
   const chips = chipsFr && chipsFr.length > 0 ? chipsFr : guide.chips
   const isPrivate = guide.visibility === 'private' || guide.private
@@ -52,10 +48,6 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
   return (
     <div className="reader-card" onClick={onOpen}>
       <div className="reader-card-top">
-        <div className="reader-card-tags">
-          {tag && <span className="reader-card-pill">{tag}</span>}
-          {level && <span className="reader-card-pill reader-card-pill-outline">{level}</span>}
-        </div>
         <div className="reader-card-title">{title}</div>
       </div>
       <div className="reader-card-banner">
