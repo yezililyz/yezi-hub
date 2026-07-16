@@ -251,24 +251,18 @@ input, textarea { font-family: inherit; }
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   position: relative;
+  overflow: hidden;
 }
-/* Subtle diagonal sheen over whichever flat content-type color CoverArt
-   sets inline, for more visual depth without needing a distinct gradient
-   per content type. */
-.cover-art::before {
-  content: '';
+.cover-art-squiggle {
   position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.22), rgba(0,0,0,0.10) 70%);
+  width: 100%; height: 100%;
   pointer-events: none;
 }
 .cover-art-frame {
   position: relative; z-index: 1;
-  width: 56px; height: 56px;
-  background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: 10px;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 3px 3px 0 rgba(28,24,20,0.2);
+  filter: drop-shadow(0 2px 3px rgba(28,24,20,0.25));
 }
 .reader-card-badges {
   position: absolute; top: 8px; right: 8px; z-index: 1;
