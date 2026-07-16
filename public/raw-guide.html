@@ -56,6 +56,27 @@
       'playbooks'
     ];
 
+    // Canonical PM-jargon definitions shown to French readers who tap a
+    // term. Keyed by the lowercase surface form(s) that appear in GLOSSARY
+    // above; several surface forms (singular/plural) share one canonical
+    // definition. Terms with no entry here (e.g. "Clay", a tool name) stay
+    // notranslate-protected only — no tap-to-reveal, since we have no
+    // reliable generic definition for a proper noun.
+    var GLOSSARY_DEFS = {
+      'product manager': "Le ou la Product Manager (chef·fe de produit) définit la stratégie produit, priorise ce qui est construit et coordonne design, ingénierie et business pour répondre aux besoins des utilisateurs.",
+      'product managers': "Le ou la Product Manager (chef·fe de produit) définit la stratégie produit, priorise ce qui est construit et coordonne design, ingénierie et business pour répondre aux besoins des utilisateurs.",
+      'product management': "Le Product Management est la discipline qui consiste à décider quoi construire et pourquoi, en s'appuyant sur la recherche utilisateur, les données et les objectifs business.",
+      'continuous discovery': "La Continuous Discovery consiste à parler régulièrement aux utilisateurs (idéalement chaque semaine) pour tester des idées, plutôt que de faire de la recherche seulement de temps en temps.",
+      'opportunity solution tree': "Un Opportunity Solution Tree est un schéma qui relie un objectif business aux opportunités (besoins ou problèmes des utilisateurs), puis aux solutions à tester — popularisé par Teresa Torres.",
+      'opportunity solution trees': "Un Opportunity Solution Tree est un schéma qui relie un objectif business aux opportunités (besoins ou problèmes des utilisateurs), puis aux solutions à tester — popularisé par Teresa Torres.",
+      'output': "Un Output est ce que l'équipe livre concrètement (une fonctionnalité, un correctif) — à distinguer de l'Outcome, l'impact réel que cela produit.",
+      'outputs': "Un Output est ce que l'équipe livre concrètement (une fonctionnalité, un correctif) — à distinguer de l'Outcome, l'impact réel que cela produit.",
+      'outcome': "Un Outcome est le changement de comportement ou de résultat mesurable chez l'utilisateur ou pour le business — à distinguer de l'Output, qui est juste ce qui a été livré.",
+      'outcomes': "Un Outcome est le changement de comportement ou de résultat mesurable chez l'utilisateur ou pour le business — à distinguer de l'Output, qui est juste ce qui a été livré.",
+      'playbook': "Un Playbook est un guide pratique et reproductible : une suite d'étapes ou de tactiques éprouvées à suivre pour atteindre un objectif donné.",
+      'playbooks': "Un Playbook est un guide pratique et reproductible : une suite d'étapes ou de tactiques éprouvées à suivre pour atteindre un objectif donné."
+    };
+
     function protectGlossaryNodes(docObj) {
       const walk = docObj.createTreeWalker(
         docObj.body,
@@ -113,6 +134,13 @@
           spanNode.className = 'notranslate';
           spanNode.setAttribute('translate', 'no');
           spanNode.textContent = foundTerm;
+          const definition = GLOSSARY_DEFS[foundTerm.toLowerCase()];
+          if (definition) {
+            spanNode.className += ' glossary-term';
+            spanNode.setAttribute('data-def', definition);
+            spanNode.setAttribute('tabindex', '0');
+            spanNode.setAttribute('role', 'button');
+          }
           const afterNode = docObj.createTextNode(afterText);
 
           parent.insertBefore(beforeNode, n);
@@ -167,6 +195,32 @@
       scriptEl.textContent = '(function(){var n=window.print.bind(window);window.print=function(){window.parent.postMessage({type:"EXPORT_PDF"},"*")};window.addEventListener("message",function(e){if(!e.data)return;if(e.data.type==="DO_NATIVE_PRINT")n();if(e.data.type==="SCROLL_TO_SECTION"&&e.data.id){var el=document.getElementById(e.data.id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}})})();';
       var head = docObj.querySelector('head') || docObj.documentElement;
       head.insertBefore(scriptEl, head.firstChild);
+
+      // Tap-to-reveal glossary popover: works for both touch and mouse via
+      // plain "click" (no hover-only interaction, so it also works on
+      // mobile). Only .glossary-term spans (added by protectGlossaryNodes
+      // above, French only) ever trigger it — harmless no-op otherwise.
+      var glossaryStyleEl = docObj.createElement('style');
+      glossaryStyleEl.textContent = '.glossary-term{border-bottom:1.5px dotted #b0603d;cursor:pointer;}' +
+        '.glossary-popover{position:absolute;z-index:9999;max-width:280px;background:#1c1814;color:#fbeee0;' +
+        'font-size:13px;line-height:1.45;padding:10px 12px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.25);' +
+        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}';
+      head.insertBefore(glossaryStyleEl, head.firstChild);
+
+      var glossaryScriptEl = docObj.createElement('script');
+      glossaryScriptEl.type = 'text/javascript';
+      glossaryScriptEl.textContent = '(function(){var openPopover=null;function closePopover(){if(openPopover){openPopover.remove();openPopover=null;}}' +
+        'document.addEventListener("click",function(e){var term=e.target&&e.target.closest?e.target.closest(".glossary-term"):null;' +
+        'if(term){e.stopPropagation();if(openPopover&&openPopover._forTerm===term){closePopover();return;}closePopover();' +
+        'var def=term.getAttribute("data-def");if(!def)return;var pop=document.createElement("div");pop.className="glossary-popover";' +
+        'pop.textContent=def;document.body.appendChild(pop);var rect=term.getBoundingClientRect();' +
+        'var top=rect.bottom+window.scrollY+6;var left=rect.left+window.scrollX;' +
+        'var maxLeft=window.scrollX+document.documentElement.clientWidth-296;if(left>maxLeft)left=Math.max(8,maxLeft);' +
+        'pop.style.top=top+"px";pop.style.left=left+"px";pop._forTerm=term;openPopover=pop;}else{closePopover();}});' +
+        'document.addEventListener("scroll",closePopover,true);' +
+        'document.addEventListener("keydown",function(e){var term=e.target&&e.target.classList&&e.target.classList.contains("glossary-term");' +
+        'if(term&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.target.click();}});})();';
+      head.insertBefore(glossaryScriptEl, head.firstChild);
 
       document.open();
       document.write('<!DOCTYPE html>\n' + docObj.documentElement.outerHTML);
