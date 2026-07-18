@@ -25,6 +25,20 @@ interface Guide {
   chips_fr?: string[]
   level?: string
   level_fr?: string
+  // Subject-matter facet — see guide-builder taxonomy-audit artifact
+  // (2026-07-18). 1-2 values from TOPICS; topics_fr is derived from topics
+  // at save time, never independently edited.
+  topics?: string[]
+  topics_fr?: string[]
+  // Cross-cutting context tags layered across topics (Shape 3, associative) —
+  // see OVERLAYS.
+  overlay?: string[]
+  overlay_fr?: string[]
+  // Artifact-shape facet (Checklist/Templates/Interactive Tool/Reference),
+  // independent of topics — see FORMAT_TYPES.
+  format?: string[]
+  format_fr?: string[]
+  updated_at?: Timestamp
   htmlContent: string
   htmlContent_fr?: string
   // Large guides (over INLINE_LIMIT_BYTES) store their HTML in Storage instead
@@ -157,6 +171,50 @@ const LEVELS: { en: string; fr: string }[] = [
   { en: 'Advanced', fr: 'Avancé' },
 ]
 
+// Topic (subject-matter) facet — see guide-builder taxonomy-audit artifact
+// (2026-07-18). Replaces free-form `chips` as the signal Related Guides /
+// category browsing / breadcrumbs run on. 1 value per guide by default; 2
+// only when a guide is genuinely dual-homed (polyhierarchy used sparingly,
+// not habitually). "Career" is structurally a separate track (its own nav
+// branch when the browsable-categories UI is built) but lives in the same
+// controlled list for data-modeling purposes — keeping it here doesn't lose
+// anything, splitting it into its own field would just for the site nav to decide.
+const TOPICS: { en: string; fr: string }[] = [
+  { en: 'Growth & Retention', fr: 'Croissance et rétention' },
+  { en: 'Strategy & Positioning', fr: 'Stratégie et positionnement' },
+  { en: 'Team & Organization', fr: 'Équipe et organisation' },
+  { en: 'Building & Shipping', fr: 'Conception et livraison' },
+  { en: 'Operating Cadence & Communication', fr: 'Cadence opérationnelle et communication' },
+  { en: 'Discovery & Research', fr: 'Découverte et recherche' },
+  { en: 'Launch & Go-to-Market', fr: 'Lancement et mise sur le marché' },
+  { en: 'Planning & Prioritization', fr: 'Planification et priorisation' },
+  { en: 'Career', fr: 'Carrière' },
+]
+
+// Overlay facet — cross-cutting context tags layered ACROSS the primary
+// Topic hierarchy (Shape 3, associative), not nested under it. A guide about
+// pricing can be tagged both its primary Topic AND "Overlay: Building AI
+// Products" if the pricing advice is specifically about AI products. Kept
+// deliberately small and optional (0-2) — this is connective tissue, not
+// the primary structure.
+const OVERLAYS: { en: string; fr: string }[] = [
+  { en: 'Zero-to-One / Founder', fr: 'Zéro à un / Fondateur' },
+  { en: 'Marketplace', fr: 'Marketplace' },
+  { en: 'Building AI Products', fr: 'Conception de produits IA' },
+  { en: 'Enterprise/PLG', fr: 'Entreprise/PLG' },
+]
+
+// Format facet — the artifact's SHAPE (does it include a checklist? copy-ready
+// templates?), independent of Topic and Content Type. Unlike Topic/Content
+// Type, format dimensions genuinely co-occur, so up to 2 values is fine here
+// without violating "mutually exclusive where it counts."
+const FORMAT_TYPES: { en: string; fr: string }[] = [
+  { en: 'Checklist', fr: 'Liste de contrôle' },
+  { en: 'Templates', fr: 'Modèles' },
+  { en: 'Interactive Tool', fr: 'Outil interactif' },
+  { en: 'Reference', fr: 'Référence' },
+]
+
 // Firestore hard-caps a document at 1 MiB (1,048,576 bytes) total, across ALL
 // fields, and is NOT configurable on any plan. A guide document can hold both
 // an EN and FR htmlContent field, so each is budgeted at well under half that
@@ -224,14 +282,14 @@ function parseHtmlMeta(html: string, filename: string): ParsedMeta {
   if (!tag) tag = d.querySelector('meta[name="keywords"]')?.getAttribute('content') || ''
   const brandText = d.querySelector('.brand-icon, .fire, .mech-icon')?.textContent || ''
   const icon = extractFirstEmoji(brandText) || extractFirstEmoji(d.body.textContent || '') || '📄'
-  const chips: string[] = []
-  const sectionCount = d.querySelectorAll('section.block, .block').length
-  if (sectionCount > 0) chips.push(`${sectionCount} sections`)
-  if (d.querySelector('.tpl, pre, .copy-btn')) chips.push('Templates')
-  if (html.toLowerCase().includes('playbook')) chips.push('Playbook')
-  if (html.toLowerCase().includes('checklist') || d.querySelector('.validate, .vchip')) chips.push('Checklist')
-  if (d.querySelector('.matrix, .matrix-row')) chips.push('Framework')
-  return { title, description: desc, icon, tag, chips: chips.join(', '), order: 0 }
+  // No more heuristic chip-guessing here (root cause of the taxonomy-audit
+  // chip pollution — substring checks like "html includes 'playbook'" pushed
+  // a "Playbook" chip onto guides tagged Toolkit/Framework, colliding with
+  // the tag facet's own controlled vocabulary). callOpenAIExtractMetadata's
+  // LLM call, run in parallel right after this, is the authoritative source
+  // for tag/level/topics/format/chips now — this parser only pre-fills
+  // title/description/icon before that call returns.
+  return { title, description: desc, icon, tag, chips: '', order: 0 }
 }
 
 const GLOSSARY = [
@@ -1166,6 +1224,9 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
     level: guide.level ?? '',
     order: guide.order ?? 0,
     sectionId: guide.sectionId ?? '',
+    topics: Array.isArray(guide.topics) ? guide.topics : [],
+    format: Array.isArray(guide.format) ? guide.format : [],
+    overlay: Array.isArray(guide.overlay) ? guide.overlay : [],
 
     // French metadata
     title_fr: guide.title_fr ?? '',
@@ -1496,6 +1557,9 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
         sectionId: form.sectionId || null,
         htmlContent: en.inline,
         htmlUrl: en.url,
+        topics: form.topics,
+        format: form.format,
+        overlay: form.overlay,
 
         // French translations
         title_fr: form.title_fr.trim() || null,
@@ -1505,9 +1569,15 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
         level_fr: form.level_fr || null,
         htmlContent_fr: fr.inline,
         htmlUrl_fr: fr.url,
+        // Derived from topics/format/overlay at save time — never
+        // independently edited, so EN/FR can't drift out of sync.
+        topics_fr: form.topics.map((en: string) => TOPICS.find((t: { en: string }) => t.en === en)?.fr || en),
+        format_fr: form.format.map((en: string) => FORMAT_TYPES.find((t: { en: string }) => t.en === en)?.fr || en),
+        overlay_fr: form.overlay.map((en: string) => OVERLAYS.find((t: { en: string }) => t.en === en)?.fr || en),
       }
       if (newFile) update.filename = newFile.name
       if (newFileFr) update.filename_fr = newFileFr.name
+      update.updated_at = serverTimestamp()
 
       await updateDoc(doc(db, 'guides', guide.id), update)
       show('Saved!')
@@ -1568,6 +1638,78 @@ function EditPanel({ guide, sections, onSave, onCancel, show, openAIKey }: EditP
                 <option value="">— none —</option>
                 {LEVELS.map(l => <option key={l.en} value={l.en}>{l.en}</option>)}
               </select>
+            </div>
+            <div className="field field-full">
+              <label>Topics (pick 1, 2 only if genuinely dual-homed) — French label is derived automatically</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {TOPICS.map(t => {
+                  const selected = form.topics.includes(t.en)
+                  return (
+                    <button
+                      key={t.en}
+                      type="button"
+                      className={`chip${selected ? ' chip-selected' : ''}`}
+                      style={selected ? { background: 'var(--ink)', color: '#fff' } : undefined}
+                      onClick={() => setForm(f => {
+                        const next = f.topics.includes(t.en)
+                          ? f.topics.filter((v: string) => v !== t.en)
+                          : f.topics.length >= 2 ? f.topics : [...f.topics, t.en]
+                        return { ...f, topics: next }
+                      })}
+                    >
+                      {t.en}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="field field-full">
+              <label>Format (up to 2 — describes the artifact shape, not the subject)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {FORMAT_TYPES.map(t => {
+                  const selected = form.format.includes(t.en)
+                  return (
+                    <button
+                      key={t.en}
+                      type="button"
+                      className={`chip${selected ? ' chip-selected' : ''}`}
+                      style={selected ? { background: 'var(--ink)', color: '#fff' } : undefined}
+                      onClick={() => setForm(f => {
+                        const next = f.format.includes(t.en)
+                          ? f.format.filter((v: string) => v !== t.en)
+                          : f.format.length >= 2 ? f.format : [...f.format, t.en]
+                        return { ...f, format: next }
+                      })}
+                    >
+                      {t.en}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="field field-full">
+              <label>Overlay (up to 2 — cross-cutting context, layered across Topic, not nested under it)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {OVERLAYS.map(t => {
+                  const selected = form.overlay.includes(t.en)
+                  return (
+                    <button
+                      key={t.en}
+                      type="button"
+                      className={`chip${selected ? ' chip-selected' : ''}`}
+                      style={selected ? { background: 'var(--ink)', color: '#fff' } : undefined}
+                      onClick={() => setForm(f => {
+                        const next = f.overlay.includes(t.en)
+                          ? f.overlay.filter((v: string) => v !== t.en)
+                          : f.overlay.length >= 2 ? f.overlay : [...f.overlay, t.en]
+                        return { ...f, overlay: next }
+                      })}
+                    >
+                      {t.en}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
             <div className="field field-full">
               <label>Section</label>
@@ -1998,6 +2140,7 @@ export default function AdminHub() {
         console.log(`[translate] DONE "${data.title}" in ${((Date.now()-t0)/1000).toFixed(1)}s`)
 
         if (!skipSave && Object.keys(updates).length > 0) {
+          updates.updated_at = serverTimestamp()
           await updateDoc(doc(db, 'guides', d.id), updates)
           count++
         }
@@ -2131,10 +2274,21 @@ export default function AdminHub() {
     loadSections()
   }
 
-  async function deleteSection(id: string) {
-    await deleteDoc(doc(db, 'sections', id))
-    show('Section deleted.')
-    loadSections()
+  function deleteSection(id: string, name: string) {
+    // Was a single-click, no-confirmation delete — see guide-builder
+    // RECURRENT_BUGS.md, a real section was lost this way. Guides in the
+    // section aren't deleted (they just lose their sectionId and become
+    // unsectioned), but the section's own name/intro/megaGroup/order can't
+    // be recovered once gone, so it gets the same confirm guard as guides.
+    setConfirm({
+      message: `Delete section "${name}"? Guides in it won't be deleted, but will become unsectioned (hidden from public nav) until reassigned. This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirm(null)
+        await deleteDoc(doc(db, 'sections', id))
+        show('Section deleted.')
+        loadSections()
+      }
+    })
   }
 
   async function reorderSections(fromIdx: number, toIdx: number) {
@@ -2300,12 +2454,27 @@ export default function AdminHub() {
 
       // parsed.tag is a freeform guess from the HTML (h1/meta keywords) — not
       // a match for the controlled content-type vocabulary, so don't carry it
-      // forward. Instead, auto-suggest Content Type/Level via the LLM
-      // (autoMeta) when a key is available, validated against the actual
-      // controlled vocabularies — the admin can still change either dropdown
-      // before publishing if it guessed wrong.
+      // forward. Instead, auto-suggest Content Type/Level/Topics/Format via
+      // the LLM (autoMeta) when a key is available, validated against the
+      // actual controlled vocabularies — the admin can still change any of
+      // them before publishing if it guessed wrong. Topics/Format are
+      // arrays (1-2 values) — filter out anything not in the controlled
+      // list rather than reject the whole array on one bad value.
       const suggestedTag = CONTENT_TYPES.some(t => t.en === autoMeta.tag) ? autoMeta.tag : ''
       const suggestedLevel = LEVELS.some(l => l.en === autoMeta.level) ? autoMeta.level : ''
+      const suggestedTopics: string[] = Array.isArray(autoMeta.topics)
+        ? autoMeta.topics.filter((v: unknown) => TOPICS.some(t => t.en === v)).slice(0, 2)
+        : []
+      const suggestedFormat: string[] = Array.isArray(autoMeta.format)
+        ? autoMeta.format.filter((v: unknown) => FORMAT_TYPES.some(t => t.en === v)).slice(0, 2)
+        : []
+      const suggestedOverlay: string[] = Array.isArray(autoMeta.overlay)
+        ? autoMeta.overlay.filter((v: unknown) => OVERLAYS.some(t => t.en === v)).slice(0, 2)
+        : []
+      // topics_fr/format_fr/overlay_fr are NOT stored here — they're derived
+      // from topics/format/overlay via lookup at save time (see the save
+      // handler below), so they can never drift out of sync if the admin
+      // edits the pills after this auto-detect ran.
       setForm({
         ...parsed,
         tag: suggestedTag,
@@ -2315,10 +2484,14 @@ export default function AdminHub() {
         chips_fr,
         level: suggestedLevel,
         level_fr: '',
+        topics: suggestedTopics,
+        format: suggestedFormat,
+        overlay: suggestedOverlay,
       })
       setNewFileFrUpload(null)
-      show(suggestedTag || suggestedLevel
-        ? `French translation generated! Auto-detected: ${[suggestedTag, suggestedLevel].filter(Boolean).join(' · ')} — review before publishing.`
+      const detected = [suggestedTag, suggestedLevel, ...suggestedTopics].filter(Boolean).join(' · ')
+      show(detected
+        ? `French translation generated! Auto-detected: ${detected} — review before publishing.`
         : 'French translation generated successfully!')
     } catch (err) {
       setForm({
@@ -2330,6 +2503,9 @@ export default function AdminHub() {
         chips_fr: '',
         level: '',
         level_fr: '',
+        topics: [],
+        format: [],
+        overlay: [],
       })
       setHtmlContentFr('')
       setNewFileFrUpload(null)
@@ -2404,6 +2580,10 @@ export default function AdminHub() {
         order: Number(form.order) || 0,
         sectionId: uploadSectionId || null,
         created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        topics: Array.isArray(form.topics) ? form.topics : [],
+        format: Array.isArray(form.format) ? form.format : [],
+        overlay: Array.isArray(form.overlay) ? form.overlay : [],
 
         // French fields
         title_fr: form.title_fr.trim() || null,
@@ -2414,6 +2594,11 @@ export default function AdminHub() {
         htmlContent_fr: fr.inline,
         htmlUrl_fr: fr.url,
         filename_fr: newFileFrUpload ? newFileFrUpload.name : null,
+        // Derived from topics/format/overlay at save time (controlled 1:1
+        // lookup, never independently edited) — see note on the auto-detect wiring.
+        topics_fr: (Array.isArray(form.topics) ? form.topics : []).map((en: string) => TOPICS.find(t => t.en === en)?.fr || en),
+        format_fr: (Array.isArray(form.format) ? form.format : []).map((en: string) => FORMAT_TYPES.find(t => t.en === en)?.fr || en),
+        overlay_fr: (Array.isArray(form.overlay) ? form.overlay : []).map((en: string) => OVERLAYS.find(t => t.en === en)?.fr || en),
       })
       setFile(null); setForm(null); setHtmlContent(''); setHtmlContentFr(''); setNewFileFrUpload(null); setUploadSectionId('')
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -2982,7 +3167,7 @@ export default function AdminHub() {
                 dropAbove={secDropAbove}
                 onUpdate={(name, intro, nameFr, introFr) => updateSection(s.id, name, intro, nameFr, introFr)}
                 onMegaGroupChange={mg => updateSectionMegaGroup(s.id, mg)}
-                onDelete={() => deleteSection(s.id)}
+                onDelete={() => deleteSection(s.id, s.name)}
                 onDragStart={() => { setSecDraggedIdx(idx); secDragRef.current.from = idx }}
               />
             ))}
@@ -3076,11 +3261,15 @@ export default function AdminHub() {
                       >
                         {editingListId === list.id ? 'Close' : '✎ Edit'}
                       </button>
-                      <button className="btn btn-danger btn-sm" onMouseDown={e => e.stopPropagation()} onClick={async () => {
-                        await deleteDoc(doc(db, 'link_lists', list.id))
-                        show('List deleted.')
-                        loadLinkLists()
-                      }}>Delete</button>
+                      <button className="btn btn-danger btn-sm" onMouseDown={e => e.stopPropagation()} onClick={() => setConfirm({
+                        message: `Delete link list "${list.title}"? This cannot be undone.`,
+                        onConfirm: async () => {
+                          setConfirm(null)
+                          await deleteDoc(doc(db, 'link_lists', list.id))
+                          show('List deleted.')
+                          loadLinkLists()
+                        }
+                      })}>Delete</button>
                     </div>
                   </div>
                   {editingListId === list.id && (
@@ -3172,11 +3361,15 @@ export default function AdminHub() {
                       >
                         {editingPlaylistId === playlist.id ? 'Close' : '✎ Edit'}
                       </button>
-                      <button className="btn btn-danger btn-sm" onMouseDown={e => e.stopPropagation()} onClick={async () => {
-                        await deleteDoc(doc(db, 'playlists', playlist.id))
-                        show('Learning path deleted.')
-                        loadPlaylists()
-                      }}>Delete</button>
+                      <button className="btn btn-danger btn-sm" onMouseDown={e => e.stopPropagation()} onClick={() => setConfirm({
+                        message: `Delete learning path "${playlist.title}"? This cannot be undone.`,
+                        onConfirm: async () => {
+                          setConfirm(null)
+                          await deleteDoc(doc(db, 'playlists', playlist.id))
+                          show('Learning path deleted.')
+                          loadPlaylists()
+                        }
+                      })}>Delete</button>
                     </div>
                   </div>
                   {editingPlaylistId === playlist.id && (
@@ -3259,6 +3452,84 @@ export default function AdminHub() {
                           <option value="">— none —</option>
                           {LEVELS.map(l => <option key={l.en} value={l.en}>{l.en}</option>)}
                         </select>
+                      </div>
+                      <div className="field field-full">
+                        <label>Topics (pick 1, 2 only if genuinely dual-homed) — auto-suggested, French label is derived automatically</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {TOPICS.map(t => {
+                            const selected = Array.isArray(form.topics) && form.topics.includes(t.en)
+                            return (
+                              <button
+                                key={t.en}
+                                type="button"
+                                className={`chip${selected ? ' chip-selected' : ''}`}
+                                style={selected ? { background: 'var(--ink)', color: '#fff' } : undefined}
+                                onClick={() => setForm((f: any) => {
+                                  if (!f) return f
+                                  const current: string[] = Array.isArray(f.topics) ? f.topics : []
+                                  const next = current.includes(t.en)
+                                    ? current.filter(v => v !== t.en)
+                                    : current.length >= 2 ? current : [...current, t.en]
+                                  return { ...f, topics: next }
+                                })}
+                              >
+                                {t.en}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <div className="field field-full">
+                        <label>Format (up to 2 — describes the artifact shape, not the subject)</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {FORMAT_TYPES.map(t => {
+                            const selected = Array.isArray(form.format) && form.format.includes(t.en)
+                            return (
+                              <button
+                                key={t.en}
+                                type="button"
+                                className={`chip${selected ? ' chip-selected' : ''}`}
+                                style={selected ? { background: 'var(--ink)', color: '#fff' } : undefined}
+                                onClick={() => setForm((f: any) => {
+                                  if (!f) return f
+                                  const current: string[] = Array.isArray(f.format) ? f.format : []
+                                  const next = current.includes(t.en)
+                                    ? current.filter(v => v !== t.en)
+                                    : current.length >= 2 ? current : [...current, t.en]
+                                  return { ...f, format: next }
+                                })}
+                              >
+                                {t.en}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <div className="field field-full">
+                        <label>Overlay (up to 2 — cross-cutting context, layered across Topic, not nested under it)</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {OVERLAYS.map(t => {
+                            const selected = Array.isArray(form.overlay) && form.overlay.includes(t.en)
+                            return (
+                              <button
+                                key={t.en}
+                                type="button"
+                                className={`chip${selected ? ' chip-selected' : ''}`}
+                                style={selected ? { background: 'var(--ink)', color: '#fff' } : undefined}
+                                onClick={() => setForm((f: any) => {
+                                  if (!f) return f
+                                  const current: string[] = Array.isArray(f.overlay) ? f.overlay : []
+                                  const next = current.includes(t.en)
+                                    ? current.filter(v => v !== t.en)
+                                    : current.length >= 2 ? current : [...current, t.en]
+                                  return { ...f, overlay: next }
+                                })}
+                              >
+                                {t.en}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                       <div className="field field-full">
                         <label>Section</label>

@@ -276,11 +276,13 @@ export const extractMetadata = onCall(
       throw new HttpsError('invalid-argument', 'htmlContent and apiKey are required.')
     }
 
-    // Keep "tag" and "level" in sync with CONTENT_TYPES/LEVELS in
-    // AdminHub.tsx — this is a controlled taxonomy (used to pick the
-    // guide's cover art, filter chips, etc.), not freeform text, so the
-    // model must pick exactly one of these values rather than inventing
-    // its own label.
+    // Keep "tag"/"level"/"topics"/"overlay"/"format" in sync with
+    // CONTENT_TYPES/LEVELS/TOPICS/OVERLAYS/FORMAT_TYPES in AdminHub.tsx —
+    // these are controlled taxonomies (see guide-builder taxonomy-audit
+    // artifact, 2026-07-18), not freeform text, so the model must pick
+    // exactly from these lists rather than inventing its own label. "chips"
+    // stays freeform — it's cosmetic flavor text on the card now, no longer
+    // load-bearing for matching/browsing.
     const systemPrompt = `Extract or generate the following metadata from the provided HTML content.
 Return ONLY a strictly valid JSON object matching the schema. No markdown, no prefixes.
 {
@@ -288,9 +290,16 @@ Return ONLY a strictly valid JSON object matching the schema. No markdown, no pr
   "description": "A 1-2 sentence compelling summary of what this document is about.",
   "tag": "EXACTLY one of: Playbook, Framework, Case Study/Teardown, Field Guide, Toolkit, Interview Guide, Personal Notes — pick whichever best matches the content's actual structure and purpose",
   "level": "EXACTLY one of: Beginner, Intermediate, Advanced — your best judgment of the reader experience level this content assumes or targets",
-  "chips": ["array", "of", "up", "to", "3", "short", "tags", "e.g.", "Linear agent", "Product Strategy"]
+  "topics": ["1-2 values, EXACTLY from: Growth & Retention, Strategy & Positioning, Team & Organization, Building & Shipping, Operating Cadence & Communication, Discovery & Research, Launch & Go-to-Market, Planning & Prioritization, Career"],
+  "overlay": ["0-2 values, EXACTLY from: Zero-to-One / Founder, Marketplace, Building AI Products, Enterprise/PLG — only include one if the content specifically targets that context, most guides have none"],
+  "format": ["0-2 values, EXACTLY from: Checklist, Templates, Interactive Tool, Reference"],
+  "chips": ["array", "of", "up", "to", "3", "short", "descriptive", "tags", "e.g.", "Linear agent", "Product Strategy"]
 }
-If a field cannot be reasonably determined, leave it as an empty string (or empty array for chips) — but always make your best guess for "tag" and "level" rather than leaving them empty, since every guide needs one of each.`
+Field notes:
+- "topics": pick the single best-matching category; only include a second if the content genuinely spans two of them equally — don't pad to 2 for the sake of it. Use "Career" only for career/networking/mentorship content, not general PM strategy.
+- "format": "Checklist" if there's a validation/checklist section, "Templates" if there are copy-ready templates/snippets, "Interactive Tool" if there are working calculators/simulators, "Reference" if none of those apply (the default — most guides are Reference). Checklist and Templates can combine if both are genuinely present.
+"topics", "overlay", and "format" MUST always be JSON arrays (e.g. ["Career"]), even when there's only one value or the array is empty — never a bare string.
+If a field cannot be reasonably determined, leave it as an empty string (or empty array for chips/topics/overlay/format) — but always make your best guess for "tag", "level", and "topics" rather than leaving them empty, since every guide needs one of each.`
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
