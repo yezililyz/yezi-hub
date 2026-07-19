@@ -22,15 +22,20 @@ interface Guide {
   audioUrls_fr?: Record<string, string>
   updated_at?: { toMillis?: () => number; seconds?: number } | null
   tag?: string
+  tag_fr?: string
   level?: string
   topics?: string[]
   overlay?: string[]
   format?: string[]
+  description?: string
+  description_fr?: string
 }
 
 interface RelatedGuide {
   id: string
   title: string
+  description: string
+  tag: string
 }
 
 // Same 9-value controlled vocabulary as AdminHub.tsx/PublicHub.tsx's TOPICS —
@@ -225,11 +230,14 @@ export default function GuideViewer() {
             const topicOverlap = (c.topics ?? []).filter(t => guide.topics!.includes(t)).length
             const sameTag = c.tag && c.tag === guide.tag ? 1 : 0
             const sameLevel = c.level && c.level === guide.level ? 1 : 0
-            return { id: d.id, title: lang === 'fr' && c.title_fr ? c.title_fr : c.title, topicOverlap, sameTag, sameLevel }
+            const title = lang === 'fr' && c.title_fr ? c.title_fr : c.title
+            const description = lang === 'fr' && c.description_fr ? c.description_fr : (c.description || '')
+            const tag = lang === 'fr' && c.tag_fr ? c.tag_fr : (c.tag || '')
+            return { id: d.id, title, description, tag, topicOverlap, sameTag, sameLevel }
           })
           .sort((a, b) => (b.topicOverlap - a.topicOverlap) || (b.sameTag - a.sameTag) || (b.sameLevel - a.sameLevel))
           .slice(0, 4)
-          .map(({ id, title }) => ({ id, title }))
+          .map(({ id, title, description, tag }) => ({ id, title, description, tag }))
         if (!cancelled) setRelatedGuides(scored)
       } catch (err) {
         console.warn('Related guides query failed', err)
@@ -245,7 +253,7 @@ export default function GuideViewer() {
   // at the end of the guide content itself, like reaching the end of an article.
   useEffect(() => {
     if (!iframeLoaded || relatedGuides.length === 0) return
-    const items = relatedGuides.map(g => ({ title: g.title, url: `/guide/${g.id}?lang=${lang}` }))
+    const items = relatedGuides.map(g => ({ title: g.title, description: g.description, tag: g.tag, url: `/guide/${g.id}?lang=${lang}` }))
     iframeRef.current?.contentWindow?.postMessage({ type: 'RELATED_GUIDES', items, lang }, '*')
   }, [iframeLoaded, relatedGuides, lang])
 
