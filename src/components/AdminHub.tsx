@@ -2009,6 +2009,8 @@ export default function AdminHub() {
   const [showNewPlaylist, setShowNewPlaylist] = useState(false)
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
   const [timelineExpanded, setTimelineExpanded] = useState(true)
+  const [timelineRange, setTimelineRange] = useState<'today' | '7d' | '30d' | 'all'>('all')
+  const [expandedClipId, setExpandedClipId] = useState<string | null>(null)
   const { toast, show } = useToast()
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -2864,8 +2866,19 @@ export default function AdminHub() {
             <span style={{ fontSize: 13, color: 'var(--muted)' }}>{timelineExpanded ? '▾ Collapse' : '▸ Expand'}</span>
           </h3>
           {timelineExpanded && (() => {
+            const RANGE_MS: Record<typeof timelineRange, number | null> = {
+              today: 1000 * 60 * 60 * 24,
+              '7d': 1000 * 60 * 60 * 24 * 7,
+              '30d': 1000 * 60 * 60 * 24 * 30,
+              all: null,
+            }
+            const cutoff = RANGE_MS[timelineRange]
+            const rangedGuides = cutoff === null
+              ? guides
+              : guides.filter(g => (g.created_at?.toMillis() ?? 0) >= Date.now() - cutoff)
+
             const dayGroups = new Map<string, { label: string; guides: typeof guides }>()
-            ;[...guides]
+            ;[...rangedGuides]
               .sort((a, b) => (b.created_at?.toMillis() ?? 0) - (a.created_at?.toMillis() ?? 0))
               .forEach(guide => {
                 const uploadedAt = guide.created_at?.toDate()
@@ -2876,30 +2889,67 @@ export default function AdminHub() {
               })
             const groups = [...dayGroups.values()]
             return (
-              <div className="upload-timeline">
-                {groups.map((group, gi) => (
-                  <div key={group.label + gi} className="timeline-row">
-                    <div className="timeline-date">{group.label}</div>
-                    <div className="timeline-rail">
-                      <span className="timeline-dot" />
+              <>
+                <div className="timeline-range-filter">
+                  {(['today', '7d', '30d', 'all'] as const).map(r => (
+                    <button
+                      key={r}
+                      className={`filter-chip ${timelineRange === r ? 'active' : ''}`}
+                      onClick={() => setTimelineRange(r)}
+                    >
+                      {r === 'today' ? 'Today' : r === '7d' ? 'Last 7 days' : r === '30d' ? 'Last 30 days' : 'All time'}
+                    </button>
+                  ))}
+                </div>
+                {groups.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', padding: '10px 0' }}>No uploads in this range.</p>
+                ) : (
+                <div className="upload-timeline">
+                  {groups.map((group, gi) => (
+                    <div key={group.label + gi} className="timeline-row">
+                      <div className="timeline-date">{group.label}</div>
+                      <div className="timeline-rail">
+                        <span className="timeline-dot" />
+                      </div>
+                      <div className="timeline-clips">
+                        {group.guides.map(guide => {
+                          const isExpanded = expandedClipId === guide.id
+                          const sectionName = guide.sectionId ? sectionsById.get(guide.sectionId)?.name : null
+                          const status = guide.published ? 'Published' : guide.visibility === 'private' ? 'Private' : 'Draft'
+                          return (
+                            <div key={guide.id} className={`timeline-clip-wrap ${isExpanded ? 'expanded' : ''}`}>
+                              <div
+                                className="timeline-clip"
+                                title={`${guide.title} — ${status}`}
+                                onClick={() => setExpandedClipId(isExpanded ? null : guide.id)}
+                              >
+                                <span className="timeline-clip-icon">{guide.icon}</span>
+                                <span className="timeline-clip-title">{guide.title || 'Untitled'}</span>
+                                <span className={`timeline-clip-dot ${guide.published ? 'published' : 'draft'}`} />
+                              </div>
+                              {isExpanded && (
+                                <div className="timeline-clip-detail">
+                                  <div><span className="k">Status</span>{status}</div>
+                                  <div><span className="k">Tag</span>{guide.tag || '—'}</div>
+                                  <div><span className="k">Level</span>{guide.level || '—'}</div>
+                                  <div><span className="k">Section</span>{sectionName || 'Unassigned'}</div>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={e => { e.stopPropagation(); window.open(`/guide/${guide.id}?lang=en`, '_blank') }}
+                                  >
+                                    Open ↗
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
-                    <div className="timeline-clips">
-                      {group.guides.map(guide => (
-                        <div
-                          key={guide.id}
-                          className="timeline-clip"
-                          title={`${guide.title}${guide.published ? ' — Published' : guide.visibility === 'private' ? ' — Private' : ' — Draft'}`}
-                          onClick={() => window.open(`/guide/${guide.id}?lang=en`, '_blank')}
-                        >
-                          <span className="timeline-clip-icon">{guide.icon}</span>
-                          <span className="timeline-clip-title">{guide.title || 'Untitled'}</span>
-                          <span className={`timeline-clip-dot ${guide.published ? 'published' : 'draft'}`} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                )}
+              </>
             )
           })()}
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, getDoc, doc, query, where, updateDoc } from 'firebase/firestore'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { db, auth, ADMIN_EMAIL } from '../firebase'
@@ -7,7 +7,7 @@ import { signOut } from 'firebase/auth'
 import { trackGuideLiked, trackGuideSaved, trackPinnedClicked, trackLanguageSwitched, trackSignedOut, trackSectionNavigation } from '../analytics'
 import PinnedCarousel from './PinnedCarousel'
 import AuthGateModal from './AuthGateModal'
-import GuideCard from './GuideCard'
+import GuideCard, { type QuickTagUpdate } from './GuideCard'
 import Breadcrumbs from './Breadcrumbs'
 import { useLibrary } from '../useLibrary'
 
@@ -32,6 +32,8 @@ interface Guide {
   topics_fr?: string[]
   overlay?: string[]
   overlay_fr?: string[]
+  format?: string[]
+  format_fr?: string[]
 }
 
 // Same 9-value controlled vocabulary as AdminHub.tsx's TOPICS — kept as an
@@ -66,6 +68,14 @@ const OVERLAYS: { en: string; fr: string }[] = [
   { en: 'Enterprise/PLG', fr: 'Entreprise/PLG' },
 ]
 
+// Same 4-value controlled vocabulary as AdminHub.tsx's FORMAT_TYPES — used
+// only by the admin quick-tag save handler (derives format_fr at save time).
+const FORMAT_TYPES: { en: string; fr: string }[] = [
+  { en: 'Checklist', fr: 'Liste de contrôle' },
+  { en: 'Templates', fr: 'Modèles' },
+  { en: 'Interactive Tool', fr: 'Outil interactif' },
+  { en: 'Reference', fr: 'Référence' },
+]
 type SortMode = 'manual' | 'recent' | 'az' | 'popular'
 
 const SORT_LABELS: Record<SortMode, { en: string; fr: string }> = {
@@ -178,6 +188,11 @@ export default function PublicHub() {
   }
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL
+  // Lets the admin preview the hub exactly as a reader would see it — a
+  // computed UI flag only, never touches auth/currentUser, so it can't be
+  // mistaken for an actual permission downgrade.
+  const [viewingAsReader, setViewingAsReader] = useState(false)
+  const effectiveIsAdmin = isAdmin && !viewingAsReader
   const navigate = useNavigate()
   const { library, toggleLike, toggleSave } = useLibrary(currentUser)
 
@@ -221,6 +236,23 @@ export default function PublicHub() {
     trackGuideSaved(guideId, guide?.title || '', !wasSaved)
   }
 
+  // Admin-only quick metatag editor (card grid "+" button) — writes directly
+  // to Firestore, deriving _fr fields the same way AdminHub's EditPanel does
+  // so they can never drift out of sync with the EN values.
+  async function saveQuickTags(guideId: string, update: QuickTagUpdate) {
+    await updateDoc(doc(db, 'guides', guideId), {
+      level: update.level,
+      level_fr: update.level ? LEVEL_LABEL_FR[update.level] : '',
+      topics: update.topics,
+      topics_fr: update.topics.map(en => TOPICS.find(t => t.en === en)?.fr || en),
+      format: update.format,
+      format_fr: update.format.map(en => FORMAT_TYPES.find(t => t.en === en)?.fr || en),
+      overlay: update.overlay,
+      overlay_fr: update.overlay.map(en => OVERLAYS.find(t => t.en === en)?.fr || en),
+    })
+    setGuides(prev => prev.map(g => g.id === guideId ? { ...g, ...update } : g))
+  }
+
   function handleToggleLike(guideId: string) {
     if (!requireAuth('like', guideId)) return
     runToggleLike(guideId)
@@ -235,7 +267,7 @@ export default function PublicHub() {
     async function load() {
       try {
         setLoading(true)
-        const guidesQuery = isAdmin
+        const guidesQuery = effectiveIsAdmin
           ? collection(db, 'guides')
           : query(collection(db, 'guides'), where('published', '==', true))
 
@@ -247,9 +279,11 @@ export default function PublicHub() {
         ])
 
         const allGuides = guidesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Guide))
-        
-        // Filter visible: public sees only published, admin sees published and private (not drafts)
-        const visibleGuides = isAdmin
+
+        // Filter visible: public sees only published, admin sees published and private (not drafts).
+        // Uses effectiveIsAdmin so "view as reader" mode queries and filters exactly like a real
+        // reader would, not just an over-fetch that's hidden client-side.
+        const visibleGuides = effectiveIsAdmin
           ? allGuides.filter(g => g.sectionId && (g.published || g.visibility === 'private' || g.private))
           : allGuides.filter(g => g.published && g.sectionId)
 
@@ -283,7 +317,7 @@ export default function PublicHub() {
       }
     }
     load()
-  }, [isAdmin])
+  }, [effectiveIsAdmin])
 
   function changeLang(val: 'en' | 'fr') {
     trackLanguageSwitched(lang, val, 'public_hub')
@@ -420,7 +454,7 @@ export default function PublicHub() {
             </Link>
             {currentUser ? (
               <>
-                {!isAdmin && (
+                {!effectiveIsAdmin && (
                   <Link to={`/library?lang=${lang}`} className="my-library-btn">
                     📚 <span className="lib-label">{lang === 'fr' ? 'Ma bibliothèque' : 'My Library'}</span>
                     {[...library.values()].filter(e => e.saved).length > 0 && (
@@ -431,6 +465,15 @@ export default function PublicHub() {
                 <div className="reader-auth-bar">
                   <span className="reader-email">{currentUser.email}</span>
                   {isAdmin && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      title={viewingAsReader ? 'Return to your admin view' : 'Preview the hub as a signed-out reader would see it'}
+                      onClick={() => setViewingAsReader(v => !v)}
+                    >
+                      {viewingAsReader ? '← Back to admin' : '👁 View as reader'}
+                    </button>
+                  )}
+                  {effectiveIsAdmin && (
                     <Link to="/admin" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
                       ⚙ Admin
                     </Link>
@@ -811,9 +854,11 @@ export default function PublicHub() {
                             liked={library.get(guide.id)?.liked ?? false}
                             saved={library.get(guide.id)?.saved ?? false}
                             isNew={createdMillis(guide) > 0 && (Date.now() - createdMillis(guide)) < NEW_WINDOW_MS}
+                            isAdmin={effectiveIsAdmin}
                             onOpen={() => navigate(`/guide/${guide.id}?lang=${lang}`)}
                             onToggleLike={() => handleToggleLike(guide.id)}
                             onToggleSave={() => handleToggleSave(guide.id)}
+                            onQuickTagSave={update => saveQuickTags(guide.id, update)}
                           />
                         ))}
                       </div>

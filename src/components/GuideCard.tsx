@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import CoverArt from './CoverArt'
 
 interface GuideCardData {
@@ -15,6 +16,17 @@ interface GuideCardData {
   private?: boolean
   likeCount?: number
   updated_at?: { toMillis?: () => number; seconds?: number } | null
+  level?: string
+  topics?: string[]
+  format?: string[]
+  overlay?: string[]
+}
+
+export interface QuickTagUpdate {
+  level: string
+  topics: string[]
+  format: string[]
+  overlay: string[]
 }
 
 interface GuideCardProps {
@@ -23,10 +35,23 @@ interface GuideCardProps {
   liked: boolean
   saved: boolean
   isNew?: boolean
+  isAdmin?: boolean
   onOpen: () => void
   onToggleLike: () => void
   onToggleSave: () => void
+  onQuickTagSave?: (update: QuickTagUpdate) => void
 }
+
+// Same controlled vocabularies as PublicHub.tsx/AdminHub.tsx — kept as an
+// independent copy per this codebase's existing per-file convention.
+const QT_LEVELS = ['Beginner', 'Intermediate', 'Advanced']
+const QT_TOPICS = [
+  'Growth & Retention', 'Strategy & Positioning', 'Team & Organization', 'Building & Shipping',
+  'Operating Cadence & Communication', 'Discovery & Research', 'Launch & Go-to-Market',
+  'Planning & Prioritization', 'Career',
+]
+const QT_FORMAT = ['Checklist', 'Templates', 'Interactive Tool', 'Reference']
+const QT_OVERLAY = ['Zero-to-One / Founder', 'Marketplace', 'Building AI Products', 'Enterprise/PLG']
 
 // Defensive guard against leaked translation-pipeline artifacts (the LLM
 // sometimes echoes a "§"-based segment separator into translated text
@@ -44,7 +69,7 @@ function formatUpdated(ts: GuideCardData['updated_at'], lang: 'en' | 'fr'): stri
   return lang === 'fr' ? `Mis à jour le ${formatted}` : `Updated ${formatted}`
 }
 
-export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, onToggleLike, onToggleSave }: GuideCardProps) {
+export default function GuideCard({ guide, lang, liked, saved, isNew, isAdmin, onOpen, onToggleLike, onToggleSave, onQuickTagSave }: GuideCardProps) {
   const title = lang === 'fr' && isClean(guide.title_fr) ? guide.title_fr : guide.title
   const desc = lang === 'fr' && isClean(guide.description_fr) ? guide.description_fr : guide.description
   const chipsFr = lang === 'fr' && Array.isArray(guide.chips_fr) ? guide.chips_fr.filter(isClean) : undefined
@@ -54,6 +79,21 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
   const visibleChips = chips?.slice(0, 2) ?? []
   const extraChipCount = (chips?.length ?? 0) - visibleChips.length
   const updatedLabel = formatUpdated(guide.updated_at, lang)
+
+  const [quickTagOpen, setQuickTagOpen] = useState(false)
+  const [qtLevel, setQtLevel] = useState(guide.level || '')
+  const [qtTopics, setQtTopics] = useState<string[]>(guide.topics || [])
+  const [qtFormat, setQtFormat] = useState<string[]>(guide.format || [])
+  const [qtOverlay, setQtOverlay] = useState<string[]>(guide.overlay || [])
+
+  function toggleIn(arr: string[], set: (v: string[]) => void, val: string, max: number) {
+    set(arr.includes(val) ? arr.filter(v => v !== val) : arr.length >= max ? arr : [...arr, val])
+  }
+
+  function saveQuickTags() {
+    onQuickTagSave?.({ level: qtLevel, topics: qtTopics, format: qtFormat, overlay: qtOverlay })
+    setQuickTagOpen(false)
+  }
 
   return (
     <div className="reader-card" onClick={onOpen}>
@@ -95,8 +135,46 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
               ? (lang === 'fr' ? '🔖 Sauvé' : '🔖 Saved')
               : (lang === 'fr' ? '＋ Sauvegarder' : '＋ Save')}
           </button>
+          {isAdmin && (
+            <button
+              className="card-quicktag-btn"
+              title="Quick-edit metatags"
+              onClick={() => setQuickTagOpen(v => !v)}
+            >
+              {quickTagOpen ? '×' : '+'}
+            </button>
+          )}
         </div>
       </div>
+      {quickTagOpen && (
+        <div className="quick-tag-panel" onClick={e => e.stopPropagation()}>
+          <div className="qt-row">
+            <span className="qt-label">Level</span>
+            {QT_LEVELS.map(l => (
+              <button key={l} className={`qt-pill ${qtLevel === l ? 'active' : ''}`} onClick={() => setQtLevel(prev => prev === l ? '' : l)}>{l}</button>
+            ))}
+          </div>
+          <div className="qt-row">
+            <span className="qt-label">Topics</span>
+            {QT_TOPICS.map(t => (
+              <button key={t} className={`qt-pill ${qtTopics.includes(t) ? 'active' : ''}`} onClick={() => toggleIn(qtTopics, setQtTopics, t, 2)}>{t}</button>
+            ))}
+          </div>
+          <div className="qt-row">
+            <span className="qt-label">Format</span>
+            {QT_FORMAT.map(f => (
+              <button key={f} className={`qt-pill ${qtFormat.includes(f) ? 'active' : ''}`} onClick={() => toggleIn(qtFormat, setQtFormat, f, 2)}>{f}</button>
+            ))}
+          </div>
+          <div className="qt-row">
+            <span className="qt-label">Overlay</span>
+            {QT_OVERLAY.map(o => (
+              <button key={o} className={`qt-pill ${qtOverlay.includes(o) ? 'active' : ''}`} onClick={() => toggleIn(qtOverlay, setQtOverlay, o, 2)}>{o}</button>
+            ))}
+          </div>
+          <button className="btn btn-primary btn-sm qt-save" onClick={saveQuickTags}>Save tags</button>
+        </div>
+      )}
     </div>
   )
 }
