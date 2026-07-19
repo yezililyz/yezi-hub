@@ -30,6 +30,8 @@ interface Guide {
   level_fr?: string
   topics?: string[]
   topics_fr?: string[]
+  overlay?: string[]
+  overlay_fr?: string[]
 }
 
 // Same 9-value controlled vocabulary as AdminHub.tsx's TOPICS — kept as an
@@ -53,6 +55,16 @@ function topicSlug(en: string): string {
 function topicFromSlug(slug: string): string | null {
   return TOPICS.find(t => topicSlug(t.en) === slug)?.en ?? null
 }
+
+// Same 4-value controlled vocabulary as AdminHub.tsx's OVERLAYS. Sparser than
+// Topics (cross-cutting, 0-2 per guide, most guides have none), so it doesn't
+// get its own /category route — see filterOverlay below.
+const OVERLAYS: { en: string; fr: string }[] = [
+  { en: 'Zero-to-One / Founder', fr: 'Zéro à un / Fondateur' },
+  { en: 'Marketplace', fr: 'Marketplace' },
+  { en: 'Building AI Products', fr: 'Conception de produits IA' },
+  { en: 'Enterprise/PLG', fr: 'Entreprise/PLG' },
+]
 
 type SortMode = 'manual' | 'recent' | 'az' | 'popular'
 
@@ -152,6 +164,10 @@ export default function PublicHub() {
       setShowFilters(true)
     }
   }, [topicSlugParam])
+
+  // Overlay is sparser/cross-cutting — no dedicated route, just an in-page
+  // filter toggled from either the landing showcase or the filter panel.
+  const [filterOverlay, setFilterOverlay] = useState<string | null>(null)
 
   function selectFilterSection(sectionId: string | null) {
     setFilterSection(prev => {
@@ -295,8 +311,15 @@ export default function PublicHub() {
   // Topics facet — independent of Section/Content Type/Level, and reachable
   // both via the filter chip below and via a direct /category/:topic link.
   const allTopics = TOPICS.filter(t => guides.some(g => g.topics?.includes(t.en)))
+  const allOverlays = OVERLAYS.filter(o => guides.some(g => g.overlay?.includes(o.en)))
 
-  const hasActiveFilter = !!filterSection || !!filterTag || !!filterLevel || !!filterTopic || searchQuery.trim().length > 0
+  // Live counts for the landing-page browse showcase — computed from the
+  // already-loaded guides state so they never drift from the static numbers
+  // in the planning artifact.
+  const topicCounts = allTopics.map(t => ({ ...t, count: guides.filter(g => g.topics?.includes(t.en)).length }))
+  const overlayCounts = allOverlays.map(o => ({ ...o, count: guides.filter(g => g.overlay?.includes(o.en)).length }))
+
+  const hasActiveFilter = !!filterSection || !!filterTag || !!filterLevel || !!filterTopic || !!filterOverlay || searchQuery.trim().length > 0
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const filteredGuides = guides.filter(g => {
@@ -306,6 +329,7 @@ export default function PublicHub() {
     if (filterTag && tag !== filterTag) return false
     if (filterLevel && g.level !== filterLevel) return false
     if (filterTopic && !g.topics?.includes(filterTopic)) return false
+    if (filterOverlay && !g.overlay?.includes(filterOverlay)) return false
     if (normalizedQuery) {
       const title = lang === 'fr' ? (g.title_fr || g.title) : g.title
       const desc = lang === 'fr' ? (g.description_fr || g.description) : g.description
@@ -463,6 +487,46 @@ export default function PublicHub() {
         </div>
       )}
 
+      {!loading && topicCounts.length > 0 && (
+        <div className="topic-browse-section">
+          <div className="pinned-header">
+            <span className="pinned-header-label">
+              <span className="pinned-pin">🧭</span>
+              {lang === 'fr' ? 'Parcourir par sujet' : 'Browse by Topic'}
+            </span>
+          </div>
+          <div className="topic-browse-row">
+            {topicCounts.map(t => (
+              <button
+                key={t.en}
+                className="topic-chip"
+                onClick={() => {
+                  setFilterTopic(t.en)
+                  navigate(`/category/${topicSlug(t.en)}?lang=${lang}`)
+                }}
+              >
+                <span className="topic-chip-label">{lang === 'fr' ? t.fr : t.en}</span>
+                <span className="topic-chip-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+          {overlayCounts.length > 0 && (
+            <div className="topic-browse-row overlay-row">
+              {overlayCounts.map(o => (
+                <button
+                  key={o.en}
+                  className="overlay-chip"
+                  onClick={() => { setFilterOverlay(o.en); setShowFilters(true) }}
+                >
+                  <span className="topic-chip-label">{lang === 'fr' ? o.fr : o.en}</span>
+                  <span className="topic-chip-count">{o.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {!loading && guides.length > 0 && (
         <div className="hub-toolbar-wrap">
           <div className="hub-toolbar">
@@ -476,7 +540,7 @@ export default function PublicHub() {
               />
             </div>
 
-            {(allTags.length > 0 || allLevels.length > 0 || allTopics.length > 0) && (
+            {(allTags.length > 0 || allLevels.length > 0 || allTopics.length > 0 || allOverlays.length > 0) && (
               <button
                 className={`hub-filters-btn ${showFilters ? 'active' : ''}`}
                 onClick={() => setShowFilters(v => !v)}
@@ -487,7 +551,7 @@ export default function PublicHub() {
                   <line x1="4" y1="18" x2="20" y2="18" /><circle cx="11" cy="18" r="2" fill="var(--paper)" />
                 </svg>
                 {lang === 'fr' ? 'Filtres' : 'Filters'}
-                {(filterSection || filterTag || filterLevel || filterTopic) && <span className="hub-filters-dot" />}
+                {(filterSection || filterTag || filterLevel || filterTopic || filterOverlay) && <span className="hub-filters-dot" />}
               </button>
             )}
 
@@ -505,7 +569,7 @@ export default function PublicHub() {
             </div>
           </div>
 
-          {showFilters && (sectionsWithGuides.length > 0 || allLevels.length > 0 || allTopics.length > 0) && (
+          {showFilters && (sectionsWithGuides.length > 0 || allLevels.length > 0 || allTopics.length > 0 || allOverlays.length > 0) && (
             <div className="hub-filters-panel">
               {allTopics.length > 0 && (
                 <div className="hub-filters-group">
@@ -528,6 +592,29 @@ export default function PublicHub() {
                         }}
                       >
                         {lang === 'fr' ? t.fr : t.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {allOverlays.length > 0 && (
+                <div className="hub-filters-group">
+                  <span className="hub-toolbar-label">{lang === 'fr' ? 'CONTEXTE' : 'OVERLAY'}</span>
+                  <div className="filter-chips">
+                    <button
+                      className={`filter-chip ${!filterOverlay ? 'active' : ''}`}
+                      onClick={() => setFilterOverlay(null)}
+                    >
+                      {lang === 'fr' ? 'Tous les contextes' : 'All Overlays'}
+                    </button>
+                    {allOverlays.map(o => (
+                      <button
+                        key={o.en}
+                        className={`filter-chip ${filterOverlay === o.en ? 'active' : ''}`}
+                        onClick={() => setFilterOverlay(prev => prev === o.en ? null : o.en)}
+                      >
+                        {lang === 'fr' ? o.fr : o.en}
                       </button>
                     ))}
                   </div>
@@ -683,7 +770,7 @@ export default function PublicHub() {
             </p>
             <button
               className="btn btn-secondary btn-sm"
-              onClick={() => { setFilterSection(null); setFilterTag(null); setFilterLevel(null); setFilterTopic(null); setSearchQuery('') }}
+              onClick={() => { setFilterSection(null); setFilterTag(null); setFilterLevel(null); setFilterTopic(null); setFilterOverlay(null); setSearchQuery('') }}
               style={{ marginTop: 10 }}
             >
               {lang === 'fr' ? 'Effacer les filtres' : 'Clear filters'}
