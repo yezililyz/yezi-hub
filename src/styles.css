@@ -119,6 +119,7 @@ input, textarea { font-family: inherit; }
   color: var(--orange-deep); border-left-color: var(--orange);
   background: var(--orange-soft);
 }
+.hub-toc-link-icon { margin-right: 6px; }
 .hub-toc-mega-group { display: flex; flex-direction: column; gap: 4px; }
 .hub-toc-mega-group + .hub-toc-mega-group { margin-top: 16px; }
 .hub-toc-mega-label {
@@ -506,6 +507,10 @@ input, textarea { font-family: inherit; }
 }
 .login-card .sub { color: var(--muted); font-size: 13.5px; margin-bottom: 28px; }
 .field { margin-bottom: 16px; }
+.field-warning {
+  font-size: 12px; color: #a8641c; background: var(--orange-soft);
+  border: 1.5px solid var(--orange); border-radius: 8px; padding: 6px 10px; margin-top: 6px;
+}
 .field label {
   display: block; font-family: "Archivo", sans-serif;
   font-weight: 800; font-style: italic; text-transform: uppercase;
@@ -880,6 +885,12 @@ input, textarea { font-family: inherit; }
   line-height: 1;
 }
 .drag-handle:active { cursor: grabbing; }
+.section-icon-input {
+  width: 40px; padding: 8px 6px; flex-shrink: 0; text-align: center;
+  border: 2px solid var(--line); border-radius: 8px;
+  background: var(--paper); font-size: 16px; outline: none;
+}
+.section-icon-input:focus { border-color: var(--orange); }
 .section-inputs { flex: 1; display: flex; gap: 8px; }
 .section-name-input {
   width: 180px; padding: 8px 11px; flex-shrink: 0;
@@ -969,6 +980,7 @@ button.hub-section-heading:hover {
   width: 4px; height: 22px;
   background: var(--orange); border-radius: 2px; flex-shrink: 0;
 }
+.hub-section-heading-icon { font-size: 22px; line-height: 1; }
 .hub-section-intro {
   font-size: 14px; color: var(--ink-soft);
   margin-bottom: 20px; max-width: 520px; font-style: italic;

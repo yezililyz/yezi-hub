@@ -104,7 +104,17 @@ function sortGuides(arr: Guide[], mode: SortMode, lang: 'en' | 'fr'): Guide[] {
     return ta.localeCompare(tb)
   })
   if (mode === 'popular') return list.sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0))
-  return list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  // Curated (manual) order, but guides still inside the 7-day "New" window
+  // float to the front of their section — newest first among themselves —
+  // so a fresh upload doesn't get buried by whatever order value it inherited.
+  const now = Date.now()
+  const isNew = (g: Guide) => createdMillis(g) > 0 && (now - createdMillis(g)) < NEW_WINDOW_MS
+  return list.sort((a, b) => {
+    const aNew = isNew(a), bNew = isNew(b)
+    if (aNew !== bNew) return aNew ? -1 : 1
+    if (aNew && bNew) return createdMillis(b) - createdMillis(a)
+    return (a.order ?? 0) - (b.order ?? 0)
+  })
 }
 
 interface Section {
@@ -112,6 +122,7 @@ interface Section {
   name_fr?: string
   intro_fr?: string
   megaGroup?: string
+  icon?: string
 }
 
 const MEGA_GROUPS = ['Product', 'Tools', 'Books'] as const
@@ -790,6 +801,7 @@ export default function PublicHub() {
                           document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                         }}
                       >
+                        {section.icon && <span className="hub-toc-link-icon">{section.icon}</span>}
                         {sectionName}
                       </a>
                     )
@@ -837,7 +849,7 @@ export default function PublicHub() {
 
             return (
               <div key={section.id} id={`section-${section.id}`} className="hub-section">
-                <div className="hub-section-heading">{sectionName}</div>
+                <div className="hub-section-heading">{section.icon && <span className="hub-section-heading-icon">{section.icon}</span>}{sectionName}</div>
                 
                 {true && (
                   <div className="hub-section-content" style={{ marginTop: 16 }}>

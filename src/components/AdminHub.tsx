@@ -68,6 +68,7 @@ interface Section {
   intro_fr?: string
   order: number
   megaGroup?: string
+  icon?: string
 }
 
 // Top-level grouping sections nest under, both in the admin guide list and
@@ -129,6 +130,22 @@ interface ParsedMeta {
   tag: string
   chips: string
   order: number
+  titleLeakWarning?: string
+}
+
+// Guards against a leaked internal tool/brand name ending up as a published
+// guide's title (e.g. a copy-pasted <title> tag from the generation session
+// itself, distinct from the guide's actual content — see RECURRENT_BUGS.md).
+const LEAKED_TITLE_NAMES = ['yezi', 'guide builder', 'campfire']
+
+function auditTitleForLeak(title: string, doc: Document): { title: string; warning?: string } {
+  const lower = title.toLowerCase()
+  if (!LEAKED_TITLE_NAMES.some(name => lower.includes(name))) return { title }
+  const h1Text = doc.querySelector('h1')?.textContent?.trim()
+  if (h1Text && !LEAKED_TITLE_NAMES.some(name => h1Text.toLowerCase().includes(name))) {
+    return { title: h1Text, warning: `Title looked like a leaked internal name ("${title}") — used the guide's own heading instead: "${h1Text}"` }
+  }
+  return { title, warning: `Title looks like a leaked internal name ("${title}") — no clean heading found to substitute, review before publishing.` }
 }
 
 interface Toast { message: string; type: 'success' | 'error' }
@@ -265,8 +282,9 @@ function extractFirstEmoji(text: string): string {
 function parseHtmlMeta(html: string, filename: string): ParsedMeta {
   const parser = new DOMParser()
   const d = parser.parseFromString(html, 'text/html')
-  const title = d.querySelector('title')?.textContent?.trim()
+  const rawTitle = d.querySelector('title')?.textContent?.trim()
     || filename.replace(/\.html?$/i, '').replace(/-/g, ' ')
+  const { title, warning: titleLeakWarning } = auditTitleForLeak(rawTitle, d)
   const desc =
     d.querySelector('.lede, p.lede, .hero p, .header-desc')?.textContent?.trim()
     || d.querySelector('meta[name="description"]')?.getAttribute('content')
@@ -289,7 +307,7 @@ function parseHtmlMeta(html: string, filename: string): ParsedMeta {
   // LLM call, run in parallel right after this, is the authoritative source
   // for tag/level/topics/format/chips now — this parser only pre-fills
   // title/description/icon before that call returns.
-  return { title, description: desc, icon, tag, chips: '', order: 0 }
+  return { title, description: desc, icon, tag, chips: '', order: 0, titleLeakWarning }
 }
 
 const GLOSSARY = [
@@ -1109,7 +1127,7 @@ interface SectionRowProps {
   isDragging: boolean
   isDropTarget: boolean
   dropAbove: boolean
-  onUpdate: (name: string, intro: string, nameFr: string, introFr: string) => void
+  onUpdate: (name: string, intro: string, nameFr: string, introFr: string, icon: string) => void
   onMegaGroupChange: (megaGroup: string) => void
   onDelete: () => void
   onDragStart: () => void
@@ -1120,7 +1138,8 @@ function SectionRow({ section, idx, isDragging, isDropTarget, dropAbove, onUpdat
   const [nameFr, setNameFr] = useState(section.name_fr ?? '')
   const [intro, setIntro] = useState(section.intro ?? '')
   const [introFr, setIntroFr] = useState(section.intro_fr ?? '')
-  const dirty = name !== section.name || nameFr !== (section.name_fr ?? '') || intro !== (section.intro ?? '') || introFr !== (section.intro_fr ?? '')
+  const [icon, setIcon] = useState(section.icon ?? '')
+  const dirty = name !== section.name || nameFr !== (section.name_fr ?? '') || intro !== (section.intro ?? '') || introFr !== (section.intro_fr ?? '') || icon !== (section.icon ?? '')
 
   return (
     <div
@@ -1140,6 +1159,16 @@ function SectionRow({ section, idx, isDragging, isDropTarget, dropAbove, onUpdat
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div className="drag-handle" title="Drag to reorder">⠿</div>
+        <input
+          className="section-icon-input"
+          value={icon}
+          onChange={e => setIcon(e.target.value)}
+          placeholder="🎯"
+          maxLength={4}
+          title="Section emoji (shown in nav + heading)"
+          draggable={false}
+          onMouseDown={e => e.stopPropagation()}
+        />
         <div className="section-inputs" style={{ flex: 1 }}>
           <input
             className="section-name-input"
@@ -1173,7 +1202,7 @@ function SectionRow({ section, idx, isDragging, isDropTarget, dropAbove, onUpdat
             {MEGA_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           {dirty && (
-            <button className="btn btn-primary btn-sm" onClick={() => onUpdate(name, intro, nameFr, introFr)}>Save</button>
+            <button className="btn btn-primary btn-sm" onClick={() => onUpdate(name, intro, nameFr, introFr, icon)}>Save</button>
           )}
           <button className="btn btn-danger btn-sm" onClick={onDelete}>Delete</button>
         </div>
@@ -1967,6 +1996,7 @@ export default function AdminHub() {
   // Guide uploading state
   const [form, setForm] = useState<any>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [titleLeakWarning, setTitleLeakWarning] = useState<string | null>(null)
   const [htmlContent, setHtmlContent] = useState('')
   const [htmlContentFr, setHtmlContentFr] = useState('')
   const [newFileFrUpload, setNewFileFrUpload] = useState<File | null>(null)
@@ -2260,12 +2290,13 @@ export default function AdminHub() {
     loadSections()
   }
 
-  async function updateSection(id: string, name: string, intro: string, nameFr: string, introFr: string) {
-    await updateDoc(doc(db, 'sections', id), { 
-      name: name.trim(), 
+  async function updateSection(id: string, name: string, intro: string, nameFr: string, introFr: string, icon: string) {
+    await updateDoc(doc(db, 'sections', id), {
+      name: name.trim(),
       intro: intro.trim(),
       name_fr: nameFr.trim() || null,
       intro_fr: introFr.trim() || null,
+      icon: icon.trim() || null,
     })
     show('Section updated.')
     loadSections()
@@ -2440,6 +2471,7 @@ export default function AdminHub() {
     setHtmlContent(content)
     
     const parsed = parseHtmlMeta(content, f.name)
+    setTitleLeakWarning(parsed.titleLeakWarning ?? null)
     const key = openAIKey || undefined
     show(key ? 'Auto-translating guide content and metadata to French (GPT-4o-mini)...' : 'Auto-translating guide content and metadata to French (Google Translate)...')
     try {
@@ -3215,7 +3247,7 @@ export default function AdminHub() {
                 isDragging={secDraggedIdx === idx}
                 isDropTarget={secDropIdx === idx && secDraggedIdx !== idx}
                 dropAbove={secDropAbove}
-                onUpdate={(name, intro, nameFr, introFr) => updateSection(s.id, name, intro, nameFr, introFr)}
+                onUpdate={(name, intro, nameFr, introFr, icon) => updateSection(s.id, name, intro, nameFr, introFr, icon)}
                 onMegaGroupChange={mg => updateSectionMegaGroup(s.id, mg)}
                 onDelete={() => deleteSection(s.id, s.name)}
                 onDragStart={() => { setSecDraggedIdx(idx); secDragRef.current.from = idx }}
@@ -3476,7 +3508,10 @@ export default function AdminHub() {
                     <div className="form-grid">
                       <div className="field field-full">
                         <label>Title (EN)</label>
-                        <input value={form.title} onChange={e => setForm((f: any) => f && ({ ...f, title: e.target.value }))} required />
+                        <input value={form.title} onChange={e => { setForm((f: any) => f && ({ ...f, title: e.target.value })); setTitleLeakWarning(null) }} required />
+                        {titleLeakWarning && (
+                          <p className="field-warning">⚠️ {titleLeakWarning}</p>
+                        )}
                       </div>
                       <div className="field field-full">
                         <label>Description (EN)</label>
