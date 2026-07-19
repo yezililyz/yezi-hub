@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore'
+import { doc, getDoc, getDocs, collection, addDoc, query, where } from 'firebase/firestore'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import TtsPlayer, { type GuideSection } from './TtsPlayer'
 import { trackGuideViewed, trackExportRequested, trackTtsStarted, trackTtsSectionPlayed, trackLanguageSwitched, trackSignedOut } from '../analytics'
 import { sendMagicLink } from '../sendMagicLink'
+import Breadcrumbs from './Breadcrumbs'
 
 interface Guide {
   title: string
@@ -19,6 +20,43 @@ interface Guide {
   htmlUrl_fr?: string | null
   audioUrls_en?: Record<string, string>
   audioUrls_fr?: Record<string, string>
+  updated_at?: { toMillis?: () => number; seconds?: number } | null
+  tag?: string
+  level?: string
+  topics?: string[]
+  overlay?: string[]
+  format?: string[]
+}
+
+interface RelatedGuide {
+  id: string
+  title: string
+}
+
+// Same 9-value controlled vocabulary as AdminHub.tsx/PublicHub.tsx's TOPICS —
+// kept as an independent copy per this codebase's existing per-file convention.
+const TOPICS: { en: string; fr: string }[] = [
+  { en: 'Growth & Retention', fr: 'Croissance et rétention' },
+  { en: 'Strategy & Positioning', fr: 'Stratégie et positionnement' },
+  { en: 'Team & Organization', fr: 'Équipe et organisation' },
+  { en: 'Building & Shipping', fr: 'Conception et livraison' },
+  { en: 'Operating Cadence & Communication', fr: 'Cadence opérationnelle et communication' },
+  { en: 'Discovery & Research', fr: 'Découverte et recherche' },
+  { en: 'Launch & Go-to-Market', fr: 'Lancement et mise sur le marché' },
+  { en: 'Planning & Prioritization', fr: 'Planification et priorisation' },
+  { en: 'Career', fr: 'Carrière' },
+]
+
+function topicSlug(en: string): string {
+  return en.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+function formatUpdated(ts: Guide['updated_at'], lang: 'en' | 'fr'): string | null {
+  if (!ts) return null
+  const millis = typeof ts.toMillis === 'function' ? ts.toMillis() : (typeof ts.seconds === 'number' ? ts.seconds * 1000 : 0)
+  if (!millis) return null
+  const formatted = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(millis))
+  return lang === 'fr' ? `Mis à jour le ${formatted}` : `Updated ${formatted}`
 }
 
 // Resolves a guide's HTML: inline content if present, else fetches it from
@@ -50,6 +88,7 @@ export default function GuideViewer() {
   const [authReady, setAuthReady] = useState(false)
   // iframeLoaded tracks when the iframe signals it's ready to receive HTML
   const [iframeLoaded, setIframeLoaded] = useState(false)
+  const [relatedGuides, setRelatedGuides] = useState<RelatedGuide[]>([])
   // TTS player
   const [ttsOpen, setTtsOpen] = useState(false)
   const [ttsSections, setTtsSections] = useState<GuideSection[]>([])
@@ -163,6 +202,57 @@ export default function GuideViewer() {
       trackGuideViewed(id, data.title, lang)
     }).catch(() => { setNotFound(true); setLoading(false) })
   }, [id, authReady])
+
+  // Related Guides — ranked by topic overlap (primary), then same content
+  // type (secondary), then same level (tertiary), per the taxonomy-audit
+  // ranking already recorded for this feature. Skips entirely (no empty
+  // state) if the guide has no topics or the query fails.
+  useEffect(() => {
+    if (!guide || !guide.topics || guide.topics.length === 0 || !id) { setRelatedGuides([]); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const q = query(
+          collection(db, 'guides'),
+          where('topics', 'array-contains-any', guide.topics!.slice(0, 10)),
+          where('published', '==', true)
+        )
+        const snap = await getDocs(q)
+        const scored = snap.docs
+          .filter(d => d.id !== id)
+          .map(d => {
+            const c = d.data() as Guide
+            const topicOverlap = (c.topics ?? []).filter(t => guide.topics!.includes(t)).length
+            const sameTag = c.tag && c.tag === guide.tag ? 1 : 0
+            const sameLevel = c.level && c.level === guide.level ? 1 : 0
+            return { id: d.id, title: lang === 'fr' && c.title_fr ? c.title_fr : c.title, topicOverlap, sameTag, sameLevel }
+          })
+          .sort((a, b) => (b.topicOverlap - a.topicOverlap) || (b.sameTag - a.sameTag) || (b.sameLevel - a.sameLevel))
+          .slice(0, 4)
+          .map(({ id, title }) => ({ id, title }))
+        if (!cancelled) setRelatedGuides(scored)
+      } catch (err) {
+        console.warn('Related guides query failed', err)
+        if (!cancelled) setRelatedGuides([])
+      }
+    })()
+    return () => { cancelled = true }
+  }, [guide, id, lang])
+
+  // Push the computed related-guides list into the iframe once it's loaded —
+  // rendered there (not as a React block) because the iframe fills the full
+  // viewport height by design; the natural place for "what to read next" is
+  // at the end of the guide content itself, like reaching the end of an article.
+  useEffect(() => {
+    if (!iframeLoaded || relatedGuides.length === 0) return
+    const items = relatedGuides.map(g => ({ title: g.title, url: `/guide/${g.id}?lang=${lang}` }))
+    iframeRef.current?.contentWindow?.postMessage({ type: 'RELATED_GUIDES', items, lang }, '*')
+  }, [iframeLoaded, relatedGuides, lang])
+
+  useEffect(() => {
+    if (!guide) return
+    document.title = (lang === 'fr' ? (guide.title_fr || guide.title) : guide.title) + " · Yezi's Knowledge Hub"
+  }, [guide, lang])
 
   function changeLang(val: 'en' | 'fr') {
     trackLanguageSwitched(lang, val, 'guide_viewer')
@@ -316,6 +406,11 @@ export default function GuideViewer() {
   )
 
   const currentTitle = lang === 'fr' ? (guide.title_fr || guide.title) : guide.title
+  const updatedLabel = formatUpdated(guide.updated_at, lang)
+  const primaryTopic = guide.topics && guide.topics.length > 0 ? guide.topics[0] : null
+  const primaryTopicLabel = primaryTopic
+    ? (lang === 'fr' ? (TOPICS.find(t => t.en === primaryTopic)?.fr ?? primaryTopic) : primaryTopic)
+    : null
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -328,9 +423,16 @@ export default function GuideViewer() {
         <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/?lang=${lang}`)}>
           {lang === 'fr' ? '← Accueil' : '← Hub'}
         </button>
-        <span style={{ fontFamily: '"Archivo",sans-serif', fontWeight: 800, fontSize: 14, flex: 1 }}>
-          {currentTitle}
-        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Breadcrumbs items={[
+            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: `/?lang=${lang}` },
+            ...(primaryTopic ? [{ label: primaryTopicLabel!, to: `/category/${topicSlug(primaryTopic)}?lang=${lang}` }] : []),
+          ]} />
+          <div style={{ fontFamily: '"Archivo",sans-serif', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 2, overflow: 'hidden' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentTitle}</span>
+            {updatedLabel && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ink-soft)', flexShrink: 0 }}>{updatedLabel}</span>}
+          </div>
+        </div>
         <div className="lang-switcher">
           <button className={`lang-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => changeLang('en')}>EN</button>
           <button className={`lang-btn ${lang === 'fr' ? 'active' : ''}`} onClick={() => changeLang('fr')}>FR</button>

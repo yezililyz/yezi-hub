@@ -239,6 +239,9 @@ input, textarea { font-family: inherit; }
   padding: 18px 18px 0;
   display: flex; flex-direction: column; gap: 6px;
 }
+.reader-card-date {
+  font-size: 11px; color: var(--muted); font-family: var(--mono), monospace;
+}
 .reader-card-banner {
   position: relative;
   height: 118px;

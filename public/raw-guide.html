@@ -161,6 +161,11 @@
 
     // Prevent double-render if both REST API and postMessage provide HTML
     var htmlRendered = false;
+    // A RELATED_GUIDES message may arrive before renderHtml() has run its
+    // document.write() — appending to document.body before that point would
+    // be wiped out, since document.write() discards the whole document.
+    // Queue it and flush once the real content is written.
+    var pendingRelatedGuides = null;
 
     // Shared render function — called from either the REST API path (public
     // guides) or the INJECT_HTML postMessage path (private/admin-only guides
@@ -225,6 +230,41 @@
       document.open();
       document.write('<!DOCTYPE html>\n' + docObj.documentElement.outerHTML);
       document.close();
+
+      if (pendingRelatedGuides) {
+        var pending = pendingRelatedGuides;
+        pendingRelatedGuides = null;
+        renderRelatedGuides(pending.items, pending.lang);
+      }
+    }
+
+    // Appends a "Related Guides" block at the end of the rendered document.
+    // Sent separately from INJECT_HTML/the REST render path — it depends on
+    // GuideViewer's own topic-overlap query, which resolves independently of
+    // (and often after) however this document's own HTML got rendered.
+    function renderRelatedGuides(items, itemsLang) {
+      if (!items || !items.length) return;
+      if (!htmlRendered) { pendingRelatedGuides = { items: items, lang: itemsLang }; return; }
+      if (document.getElementById('related-guides-block')) return;
+      var wrap = document.createElement('div');
+      wrap.id = 'related-guides-block';
+      wrap.style.cssText = 'max-width:900px;margin:8px auto 60px;padding:28px 24px 0;border-top:2px solid #e5d8c6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;';
+      var heading = document.createElement('div');
+      heading.textContent = itemsLang === 'fr' ? 'À lire aussi' : 'Related Guides';
+      heading.style.cssText = 'font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a7d70;margin-bottom:14px;';
+      wrap.appendChild(heading);
+      var grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;';
+      items.forEach(function(it) {
+        var a = document.createElement('a');
+        a.href = it.url;
+        a.target = '_top';
+        a.textContent = it.title;
+        a.style.cssText = 'display:block;border:2px solid #1c1814;border-radius:12px;padding:14px 16px;background:#fff;text-decoration:none;color:#1c1814;font-weight:600;font-size:14px;box-shadow:3px 3px 0 #1c1814;';
+        grid.appendChild(a);
+      });
+      wrap.appendChild(grid);
+      document.body.appendChild(wrap);
     }
 
     // Listen for INJECT_HTML from the parent GuideViewer (sent after its own
@@ -233,6 +273,9 @@
     window.addEventListener('message', function(e) {
       if (e.data && e.data.type === 'INJECT_HTML') {
         renderHtml(e.data.html, e.data.lang || lang);
+      }
+      if (e.data && e.data.type === 'RELATED_GUIDES') {
+        renderRelatedGuides(e.data.items, e.data.lang || lang);
       }
     });
 

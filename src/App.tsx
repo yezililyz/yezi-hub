@@ -142,6 +142,7 @@ export default function App() {
       <PageviewTracker />
       <Routes>
         <Route path="/" element={<PublicHub />} />
+        <Route path="/category/:topic" element={<PublicHub />} />
         <Route path="/library" element={<MyLibrary />} />
         <Route path="/paths" element={<LearningPaths />} />
         <Route path="/paths/:id" element={<LearningPaths />} />

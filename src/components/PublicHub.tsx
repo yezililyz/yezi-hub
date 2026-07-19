@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { db, auth, ADMIN_EMAIL } from '../firebase'
 import { signOut } from 'firebase/auth'
@@ -8,6 +8,7 @@ import { trackGuideLiked, trackGuideSaved, trackPinnedClicked, trackLanguageSwit
 import PinnedCarousel from './PinnedCarousel'
 import AuthGateModal from './AuthGateModal'
 import GuideCard from './GuideCard'
+import Breadcrumbs from './Breadcrumbs'
 import { useLibrary } from '../useLibrary'
 
 interface Guide {
@@ -24,8 +25,33 @@ interface Guide {
   pinned?: boolean
   likeCount?: number
   created_at?: { toMillis?: () => number; seconds?: number } | null
+  updated_at?: { toMillis?: () => number; seconds?: number } | null
   level?: string
   level_fr?: string
+  topics?: string[]
+  topics_fr?: string[]
+}
+
+// Same 9-value controlled vocabulary as AdminHub.tsx's TOPICS — kept as an
+// independent copy per this codebase's existing per-file Guide-shape convention.
+const TOPICS: { en: string; fr: string }[] = [
+  { en: 'Growth & Retention', fr: 'Croissance et rétention' },
+  { en: 'Strategy & Positioning', fr: 'Stratégie et positionnement' },
+  { en: 'Team & Organization', fr: 'Équipe et organisation' },
+  { en: 'Building & Shipping', fr: 'Conception et livraison' },
+  { en: 'Operating Cadence & Communication', fr: 'Cadence opérationnelle et communication' },
+  { en: 'Discovery & Research', fr: 'Découverte et recherche' },
+  { en: 'Launch & Go-to-Market', fr: 'Lancement et mise sur le marché' },
+  { en: 'Planning & Prioritization', fr: 'Planification et priorisation' },
+  { en: 'Career', fr: 'Carrière' },
+]
+
+function topicSlug(en: string): string {
+  return en.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+function topicFromSlug(slug: string): string | null {
+  return TOPICS.find(t => topicSlug(t.en) === slug)?.en ?? null
 }
 
 type SortMode = 'manual' | 'recent' | 'az' | 'popular'
@@ -114,6 +140,18 @@ export default function PublicHub() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedTocGroups, setExpandedTocGroups] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
+
+  // /category/:topic support — the slug in the URL seeds the Topics filter
+  // once on mount/navigation; the filter chip below stays the single source
+  // of truth for the rest of the session (both reachable, per plan).
+  const { topic: topicSlugParam } = useParams<{ topic?: string }>()
+  const [filterTopic, setFilterTopic] = useState<string | null>(() => topicSlugParam ? topicFromSlug(topicSlugParam) : null)
+  useEffect(() => {
+    if (topicSlugParam) {
+      setFilterTopic(topicFromSlug(topicSlugParam))
+      setShowFilters(true)
+    }
+  }, [topicSlugParam])
 
   function selectFilterSection(sectionId: string | null) {
     setFilterSection(prev => {
@@ -254,7 +292,11 @@ export default function PublicHub() {
   const LEVEL_LABEL_FR: Record<string, string> = { Beginner: 'Débutant', Intermediate: 'Intermédiaire', Advanced: 'Avancé' }
   const allLevels = LEVEL_ORDER.filter(lvl => guides.some(g => g.level === lvl))
 
-  const hasActiveFilter = !!filterSection || !!filterTag || !!filterLevel || searchQuery.trim().length > 0
+  // Topics facet — independent of Section/Content Type/Level, and reachable
+  // both via the filter chip below and via a direct /category/:topic link.
+  const allTopics = TOPICS.filter(t => guides.some(g => g.topics?.includes(t.en)))
+
+  const hasActiveFilter = !!filterSection || !!filterTag || !!filterLevel || !!filterTopic || searchQuery.trim().length > 0
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
   const filteredGuides = guides.filter(g => {
@@ -263,6 +305,7 @@ export default function PublicHub() {
     if (filterSection && g.sectionId !== filterSection) return false
     if (filterTag && tag !== filterTag) return false
     if (filterLevel && g.level !== filterLevel) return false
+    if (filterTopic && !g.topics?.includes(filterTopic)) return false
     if (normalizedQuery) {
       const title = lang === 'fr' ? (g.title_fr || g.title) : g.title
       const desc = lang === 'fr' ? (g.description_fr || g.description) : g.description
@@ -327,6 +370,15 @@ export default function PublicHub() {
   const currentTagline = lang === 'fr' ? (siteMeta.tagline_fr || siteMeta.tagline) : siteMeta.tagline
   const currentSubtitle = lang === 'fr' ? (siteMeta.subtitle_fr || siteMeta.subtitle) : siteMeta.subtitle
 
+  useEffect(() => {
+    if (filterTopic) {
+      const topicLabel = lang === 'fr' ? (TOPICS.find(t => t.en === filterTopic)?.fr ?? filterTopic) : filterTopic
+      document.title = `${topicLabel} · ${currentTitle}`
+    } else {
+      document.title = currentTitle
+    }
+  }, [filterTopic, currentTitle, lang])
+
   return (
     <>
       <header className="hub-header">
@@ -378,6 +430,15 @@ export default function PublicHub() {
         <p className="header-desc">{currentSubtitle}</p>
       </header>
 
+      {filterTopic && (
+        <div style={{ padding: '10px 22px', borderBottom: '1px solid var(--line)', background: 'var(--cream-deep)' }}>
+          <Breadcrumbs items={[
+            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: '/' },
+            { label: lang === 'fr' ? (TOPICS.find(t => t.en === filterTopic)?.fr ?? filterTopic) : filterTopic },
+          ]} />
+        </div>
+      )}
+
       {showAuthModal && (
         <AuthGateModal
           lang={lang}
@@ -415,7 +476,7 @@ export default function PublicHub() {
               />
             </div>
 
-            {(allTags.length > 0 || allLevels.length > 0) && (
+            {(allTags.length > 0 || allLevels.length > 0 || allTopics.length > 0) && (
               <button
                 className={`hub-filters-btn ${showFilters ? 'active' : ''}`}
                 onClick={() => setShowFilters(v => !v)}
@@ -426,7 +487,7 @@ export default function PublicHub() {
                   <line x1="4" y1="18" x2="20" y2="18" /><circle cx="11" cy="18" r="2" fill="var(--paper)" />
                 </svg>
                 {lang === 'fr' ? 'Filtres' : 'Filters'}
-                {(filterSection || filterTag || filterLevel) && <span className="hub-filters-dot" />}
+                {(filterSection || filterTag || filterLevel || filterTopic) && <span className="hub-filters-dot" />}
               </button>
             )}
 
@@ -444,8 +505,35 @@ export default function PublicHub() {
             </div>
           </div>
 
-          {showFilters && (sectionsWithGuides.length > 0 || allLevels.length > 0) && (
+          {showFilters && (sectionsWithGuides.length > 0 || allLevels.length > 0 || allTopics.length > 0) && (
             <div className="hub-filters-panel">
+              {allTopics.length > 0 && (
+                <div className="hub-filters-group">
+                  <span className="hub-toolbar-label">{lang === 'fr' ? 'SUJET' : 'TOPIC'}</span>
+                  <div className="filter-chips">
+                    <button
+                      className={`filter-chip ${!filterTopic ? 'active' : ''}`}
+                      onClick={() => setFilterTopic(null)}
+                    >
+                      {lang === 'fr' ? 'Tous les sujets' : 'All Topics'}
+                    </button>
+                    {allTopics.map(t => (
+                      <button
+                        key={t.en}
+                        className={`filter-chip ${filterTopic === t.en ? 'active' : ''}`}
+                        onClick={() => {
+                          const next = filterTopic === t.en ? null : t.en
+                          setFilterTopic(next)
+                          navigate(next ? `/category/${topicSlug(t.en)}?lang=${lang}` : '/')
+                        }}
+                      >
+                        {lang === 'fr' ? t.fr : t.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {sectionsWithGuides.length > 0 && (
                 <div className="hub-filters-group">
                   <span className="hub-toolbar-label">{lang === 'fr' ? 'SECTION' : 'SECTION'}</span>
@@ -595,7 +683,7 @@ export default function PublicHub() {
             </p>
             <button
               className="btn btn-secondary btn-sm"
-              onClick={() => { setFilterSection(null); setFilterTag(null); setFilterLevel(null); setSearchQuery('') }}
+              onClick={() => { setFilterSection(null); setFilterTag(null); setFilterLevel(null); setFilterTopic(null); setSearchQuery('') }}
               style={{ marginTop: 10 }}
             >
               {lang === 'fr' ? 'Effacer les filtres' : 'Clear filters'}

@@ -14,6 +14,7 @@ interface GuideCardData {
   visibility?: 'public' | 'private' | 'draft'
   private?: boolean
   likeCount?: number
+  updated_at?: { toMillis?: () => number; seconds?: number } | null
 }
 
 interface GuideCardProps {
@@ -35,6 +36,14 @@ function isClean(s: string | undefined | null): s is string {
   return !!s && !s.includes('§')
 }
 
+function formatUpdated(ts: GuideCardData['updated_at'], lang: 'en' | 'fr'): string | null {
+  if (!ts) return null
+  const millis = typeof ts.toMillis === 'function' ? ts.toMillis() : (typeof ts.seconds === 'number' ? ts.seconds * 1000 : 0)
+  if (!millis) return null
+  const formatted = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(millis))
+  return lang === 'fr' ? `Mis à jour le ${formatted}` : `Updated ${formatted}`
+}
+
 export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, onToggleLike, onToggleSave }: GuideCardProps) {
   const title = lang === 'fr' && isClean(guide.title_fr) ? guide.title_fr : guide.title
   const desc = lang === 'fr' && isClean(guide.description_fr) ? guide.description_fr : guide.description
@@ -44,11 +53,13 @@ export default function GuideCard({ guide, lang, liked, saved, isNew, onOpen, on
 
   const visibleChips = chips?.slice(0, 2) ?? []
   const extraChipCount = (chips?.length ?? 0) - visibleChips.length
+  const updatedLabel = formatUpdated(guide.updated_at, lang)
 
   return (
     <div className="reader-card" onClick={onOpen}>
       <div className="reader-card-top">
         <div className="reader-card-title">{title}</div>
+        {updatedLabel && <div className="reader-card-date">{updatedLabel}</div>}
       </div>
       <div className="reader-card-banner">
         <CoverArt contentType={guide.tag} />
