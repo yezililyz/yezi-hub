@@ -61,6 +61,34 @@ input, textarea { font-family: inherit; }
 .header-desc { max-width: 560px; font-size: 16px; color: var(--ink-soft); margin-top: 18px; }
 .header-actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
 
+/* ─── HERO STATS + INSTALL CTA ─── */
+.hero-stats-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 16px; margin-top: 22px;
+}
+.hero-stats-bar { display: flex; flex-wrap: wrap; gap: 22px; }
+.hero-stat { display: flex; flex-direction: column; gap: 2px; }
+.hero-stat-num {
+  font-family: "Anton", "Archivo", sans-serif; font-size: 26px; line-height: 1;
+  color: var(--ink);
+}
+.hero-stat-label {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+}
+.hero-install-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: "Inter", sans-serif; font-weight: 700; font-size: 13px;
+  color: var(--ink); text-decoration: none;
+  background: var(--paper); border: 2px solid var(--ink); border-radius: 999px;
+  padding: 9px 16px; box-shadow: var(--shadow-sm); transition: transform .1s ease;
+  white-space: nowrap;
+}
+.hero-install-btn:hover { transform: translate(-1px, -1px); }
+
+/* ─── MOST POPULAR ─── */
+.most-popular-section { margin-bottom: 40px; }
+
 /* ─── MAIN ─── */
 .pinned-strip-wrap {
   max-width: 1180px; margin: 0 auto;

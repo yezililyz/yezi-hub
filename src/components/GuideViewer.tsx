@@ -259,7 +259,7 @@ export default function GuideViewer() {
 
   useEffect(() => {
     if (!guide) return
-    document.title = (lang === 'fr' ? (guide.title_fr || guide.title) : guide.title) + " · Yezi's Knowledge Hub"
+    document.title = (lang === 'fr' ? (guide.title_fr || guide.title) : guide.title) + ' · Product Fieldwork'
   }, [guide, lang])
 
   function changeLang(val: 'en' | 'fr') {

@@ -267,9 +267,9 @@ async function persistGuideHtml(guideId: string, lang: 'en' | 'fr', html: string
 }
 
 const DEFAULT_SITE_META: SiteMeta = {
-  title: "Yezi's Knowledge Hub",
-  tagline: 'Guides · frameworks · working notes',
-  subtitle: 'A personal library of PM tools, frameworks, and operating guides — built to be opened, not just saved.',
+  title: 'Product Fieldwork',
+  tagline: 'Learn the moves, not the theory',
+  subtitle: 'The practical operating library for builders navigating growth, AI, and high-stakes product bets. Find the guide for the decision in front of you.',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
