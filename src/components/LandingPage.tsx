@@ -78,6 +78,12 @@ export default function LandingPage() {
   const currentTagline = lang === 'fr' ? (siteMeta.tagline_fr || siteMeta.tagline) : siteMeta.tagline
   const currentSubtitle = lang === 'fr' ? (siteMeta.subtitle_fr || siteMeta.subtitle) : siteMeta.subtitle
 
+  // One highlighted word in the headline, per the guide-builder hero rule —
+  // the brand's own last word, not fabricated marketing copy.
+  const titleWords = currentTitle.split(' ')
+  const titleLead = titleWords.slice(0, -1).join(' ')
+  const titleLast = titleWords[titleWords.length - 1] ?? ''
+
   // Same live-computed stats/most-popular logic used in PublicHub.tsx before
   // it moved here — real numbers, no static/fabricated landing-page snapshot.
   const contentTypeCounts = Array.from(
@@ -94,8 +100,16 @@ export default function LandingPage() {
     .sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0))
     .slice(0, 6)
 
+  // "Today's fieldwork" hero preview — real guides, not a fabricated snapshot.
+  const heroPool = mostPopularGuides.length > 0 ? mostPopularGuides : guides
+  const heroFeatured = heroPool[0]
+  const heroMini = heroPool.slice(1, 3)
+  const heroShownIds = new Set([heroFeatured?.id, ...heroMini.map(g => g.id)].filter(Boolean))
+  // Don't repeat a guide already teased in the hero card further down the page.
+  const belowFoldPopular = mostPopularGuides.filter(g => !heroShownIds.has(g.id))
+
   return (
-    <div className="landing-page">
+    <div className="landing-page" id="top">
       <nav className="landing-nav">
         <Link to="/" className="brand" style={{ textDecoration: 'none' }}>
           <div className="brand-icon">✦</div>
@@ -140,52 +154,139 @@ export default function LandingPage() {
       )}
 
       <header className="landing-hero">
-        <div className="landing-hero-eyebrow">{currentTagline}</div>
-        <h1 className="landing-hero-headline">{currentTitle}</h1>
-        <p className="landing-hero-subtitle">{currentSubtitle}</p>
-        <div className="landing-hero-ctas">
-          <button className="btn btn-primary" onClick={() => navigate('/hub')}>
-            {lang === 'fr' ? 'Parcourir la bibliothèque →' : 'Browse the Hub →'}
-          </button>
-          <a
-            className="hero-install-btn"
-            href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md"
-            target="_blank" rel="noopener noreferrer"
-          >
-            ⚡ {lang === 'fr' ? "Installer comme compétence d'agent" : 'Install as Agent Skill'} ↗
-          </a>
+        <div className="landing-hero-grid">
+          <div>
+            <div className="landing-hero-eyebrow">{currentTagline}</div>
+            <h1 className="landing-hero-headline">
+              {titleLead ? `${titleLead} ` : ''}<span className="hl">{titleLast}</span>
+            </h1>
+            <p className="landing-hero-subtitle">{currentSubtitle}</p>
+
+            <form
+              className="landing-hero-form"
+              onSubmit={e => { e.preventDefault(); setShowAuthModal(true) }}
+            >
+              <input type="email" placeholder={lang === 'fr' ? 'Votre email' : 'Enter your email'} />
+              <button type="submit" className="btn btn-primary">
+                {lang === 'fr' ? '→ Se connecter' : 'Get Free Access'}
+              </button>
+            </form>
+            <p className="landing-hero-form-hint">
+              {lang === 'fr'
+                ? 'Connexion par lien magique — pas de mot de passe. Désabonnement à tout moment.'
+                : 'Sign in with a magic link — no password. Unsubscribe anytime.'}
+            </p>
+
+            <div className="landing-hero-ctas">
+              <a
+                className="hero-install-btn"
+                href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md"
+                target="_blank" rel="noopener noreferrer"
+              >
+                ⚡ {lang === 'fr' ? "Installer comme compétence d'agent" : 'Install as Agent Skill'} ↗
+              </a>
+              <button className="btn btn-secondary" onClick={() => navigate('/hub')}>
+                {lang === 'fr' ? 'Parcourir la bibliothèque →' : 'Browse the Hub →'}
+              </button>
+            </div>
+
+            {!loading && guides.length > 0 && (
+              <div className="hero-stats-bar">
+                <div className="hero-stat">
+                  <span className="hero-stat-num">{guides.length}</span>
+                  <span className="hero-stat-label">Guides</span>
+                </div>
+                {contentTypeCounts.map(([tag, count]) => {
+                  const g = guides.find(g => g.tag === tag)
+                  const tagLabel = lang === 'fr' ? (g?.tag_fr || tag) : tag
+                  return (
+                    <div className="hero-stat" key={tag}>
+                      <span className="hero-stat-num">{count}</span>
+                      <span className="hero-stat-label">{tagLabel}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {!loading && heroFeatured && (
+            <div className="landing-hero-card">
+              <div className="landing-hero-card-head">
+                <span>{lang === 'fr' ? "Aujourd'hui sur le terrain" : "Today's Fieldwork"}</span>
+                <span>01 / {Math.min(heroPool.length, 3)}</span>
+              </div>
+              <Link to={`/guide/${heroFeatured.id}?lang=${lang}`} className="landing-hero-feature">
+                <div style={{ position: 'absolute', inset: 0 }}><CoverArt contentType={heroFeatured.tag} /></div>
+                <span className="landing-hero-feature-tag">
+                  {lang === 'fr' && heroFeatured.tag_fr ? heroFeatured.tag_fr : heroFeatured.tag}
+                </span>
+                <div className="landing-hero-feature-title">
+                  {lang === 'fr' && heroFeatured.title_fr ? heroFeatured.title_fr : heroFeatured.title}
+                </div>
+              </Link>
+              {heroMini.length > 0 && (
+                <div className="landing-hero-mini">
+                  {heroMini.map(g => (
+                    <Link key={g.id} to={`/guide/${g.id}?lang=${lang}`} className="landing-hero-mini-item">
+                      <span className="landing-hero-mini-tag">{lang === 'fr' && g.tag_fr ? g.tag_fr : g.tag}</span>
+                      <div className="landing-hero-mini-title">{lang === 'fr' && g.title_fr ? g.title_fr : g.title}</div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      <section className="landing-section">
+        <div className="landing-library-head">
+          <div>
+            <p className="landing-kicker">{lang === 'fr' ? 'La bibliothèque de terrain' : 'The field library'}</p>
+            <h2 className="landing-section-headline">
+              {lang === 'fr'
+                ? 'Une bibliothèque pratique pour les décisions qui comptent.'
+                : 'A practical library for the decisions that matter.'}
+            </h2>
+          </div>
+          <p className="landing-library-desc">{currentSubtitle}</p>
         </div>
 
         {!loading && guides.length > 0 && (
-          <div className="hero-stats-bar">
-            <div className="hero-stat">
-              <span className="hero-stat-num">{guides.length}</span>
-              <span className="hero-stat-label">Guides</span>
+          <div className="landing-stats-grid">
+            <div className="landing-stat-box">
+              <span className="num">{guides.length}</span>
+              <span className="label">{lang === 'fr' ? 'Guides' : 'Guides'}</span>
             </div>
             {contentTypeCounts.map(([tag, count]) => {
               const g = guides.find(g => g.tag === tag)
               const tagLabel = lang === 'fr' ? (g?.tag_fr || tag) : tag
               return (
-                <div className="hero-stat" key={tag}>
-                  <span className="hero-stat-num">{count}</span>
-                  <span className="hero-stat-label">{tagLabel}</span>
+                <div className="landing-stat-box" key={tag}>
+                  <span className="num">{count}</span>
+                  <span className="label">{tagLabel}</span>
                 </div>
               )
             })}
           </div>
         )}
-      </header>
 
-      {!loading && mostPopularGuides.length > 0 && (
-        <section className="most-popular-section landing-section">
+        <button className="btn btn-secondary" onClick={() => navigate('/hub')}>
+          {lang === 'fr' ? 'Parcourir toute la bibliothèque →' : 'Browse the full hub →'}
+        </button>
+      </section>
+
+      {!loading && belowFoldPopular.length > 0 && (
+        <section className="landing-section" id="most-discussed">
           <div className="pinned-header">
             <span className="pinned-header-label">
               <span className="pinned-pin">🔥</span>
-              {lang === 'fr' ? 'Les plus populaires' : 'Most Popular'}
+              {lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}
             </span>
           </div>
           <div className="landing-popular-grid">
-            {mostPopularGuides.map(guide => {
+            {belowFoldPopular.map(guide => {
               const title = lang === 'fr' && guide.title_fr ? guide.title_fr : guide.title
               const desc = lang === 'fr' && guide.description_fr ? guide.description_fr : guide.description
               const tagLabel = lang === 'fr' && guide.tag_fr ? guide.tag_fr : guide.tag
@@ -203,6 +304,34 @@ export default function LandingPage() {
         </section>
       )}
 
+      <section className="landing-section" id="download">
+        <div className="landing-install-panel">
+          <div>
+            <p className="landing-install-kicker">
+              {lang === 'fr' ? 'Pour les agents IA' : 'Download for AI agents'}
+            </p>
+            <h2>{lang === 'fr' ? 'Intégrez la bibliothèque à votre flux de travail.' : 'Put the library in your workflow.'}</h2>
+            <p>
+              {lang === 'fr'
+                ? "Connectez Product Fieldwork à Claude comme base de connaissances MCP — recherche sémantique, guides complets, et parcours d'apprentissage depuis n'importe quelle conversation."
+                : 'Connect Product Fieldwork to Claude as an MCP knowledge base — semantic search, full guide retrieval, and learning paths from any conversation.'}
+            </p>
+            <a
+              className="btn btn-primary"
+              href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md"
+              target="_blank" rel="noopener noreferrer"
+            >
+              {lang === 'fr' ? "Voir le guide d'installation →" : 'View setup guide →'}
+            </a>
+          </div>
+          <ul className="landing-install-steps">
+            <li>{lang === 'fr' ? 'Réglages → Connecteurs → Ajouter un connecteur personnalisé' : 'Settings → Connectors → Add custom connector'}</li>
+            <li>{lang === 'fr' ? 'Collez l\'URL du serveur et le jeton fourni' : 'Paste the server URL and provided token'}</li>
+            <li>{lang === 'fr' ? "Demandez à Claude d'explorer la bibliothèque" : 'Ask Claude to search the library'}</li>
+          </ul>
+        </div>
+      </section>
+
       <footer className="landing-footer">
         <div className="brand">
           <div className="brand-icon">✦</div>
@@ -211,9 +340,11 @@ export default function LandingPage() {
         <div className="landing-footer-links">
           <Link to="/hub">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</Link>
           <Link to="/paths">{lang === 'fr' ? 'Parcours' : 'Learning Paths'}</Link>
+          <a href="#most-discussed">{lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}</a>
           <a href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md" target="_blank" rel="noopener noreferrer">
             {lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}
           </a>
+          <a href="#top">{lang === 'fr' ? 'Haut de page ↑' : 'Back to top ↑'}</a>
         </div>
       </footer>
     </div>
