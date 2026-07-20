@@ -73,7 +73,7 @@ export default function MyLibrary() {
               <p>{lang === 'fr' ? 'Guides sauvegardés' : 'Saved guides'}</p>
             </div>
           </div>
-          <Link to={`/?lang=${lang}`} className="btn btn-secondary btn-sm">
+          <Link to={`/hub?lang=${lang}`} className="btn btn-secondary btn-sm">
             {lang === 'fr' ? '← Accueil' : '← Hub'}
           </Link>
         </div>
@@ -106,7 +106,7 @@ export default function MyLibrary() {
                 ? "Vous n'avez encore sauvegardé aucun guide — cliquez \"Save\" sur un guide pour le retrouver ici."
                 : 'No saved guides yet — click "Save" on a guide to find it here.'}
             </p>
-            <button className="btn btn-secondary" style={{ marginTop: 14 }} onClick={() => navigate('/')}>
+            <button className="btn btn-secondary" style={{ marginTop: 14 }} onClick={() => navigate('/hub')}>
               {lang === 'fr' ? 'Parcourir les guides' : 'Browse guides'}
             </button>
           </div>

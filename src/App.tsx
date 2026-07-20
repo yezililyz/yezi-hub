@@ -4,6 +4,7 @@ import { onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, type Us
 import { collection, addDoc } from 'firebase/firestore'
 import { auth, db, ADMIN_EMAIL } from './firebase'
 import { trackPage, trackSignedIn } from './analytics'
+import LandingPage from './components/LandingPage'
 import PublicHub from './components/PublicHub'
 import GuideViewer from './components/GuideViewer'
 import AdminHub from './components/AdminHub'
@@ -56,7 +57,13 @@ export default function App() {
       }
       trackSignedIn(email)
       setAuthLoading(false)
-      window.location.replace(window.location.pathname)
+      // Normally land back on whatever page the sign-in was triggered from —
+      // GuideViewer's triggerPrintAfterSignIn and PublicHub's
+      // pendingLibraryAction both depend on that to resume the action that
+      // prompted sign-in. The one exception: the landing page ('/') has no
+      // pending action to resume, so send those straight to the functional
+      // hub instead of back to the marketing page.
+      window.location.replace(window.location.pathname === '/' ? '/hub' : window.location.pathname)
     } catch (err) {
       console.error('Sign-in link failed', err)
       setAuthError('Failed to sign in. The link may have expired or already been used.')
@@ -133,7 +140,7 @@ export default function App() {
     <div style={sharedPageStyle}>
       <div style={{ fontSize: 48 }}>⚠</div>
       <p style={{ fontFamily: 'var(--mono)', fontSize: 14, color: 'var(--muted)', maxWidth: 400 }}>{authError}</p>
-      <button className="btn btn-primary" onClick={() => window.location.replace('/')}>Go to Hub</button>
+      <button className="btn btn-primary" onClick={() => window.location.replace('/hub')}>Go to Hub</button>
     </div>
   )
 
@@ -141,7 +148,8 @@ export default function App() {
     <BrowserRouter>
       <PageviewTracker />
       <Routes>
-        <Route path="/" element={<PublicHub />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/hub" element={<PublicHub />} />
         <Route path="/category/:topic" element={<PublicHub />} />
         <Route path="/library" element={<MyLibrary />} />
         <Route path="/paths" element={<LearningPaths />} />

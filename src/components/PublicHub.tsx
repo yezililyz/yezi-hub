@@ -364,25 +364,6 @@ export default function PublicHub() {
   const topicCounts = allTopics.map(t => ({ ...t, count: guides.filter(g => g.topics?.includes(t.en)).length }))
   const overlayCounts = allOverlays.map(o => ({ ...o, count: guides.filter(g => g.overlay?.includes(o.en)).length }))
 
-  // Hero stats bar — total + the 3 largest content-type buckets, computed
-  // live from the loaded guides so these numbers can never go stale like a
-  // hand-written landing-page snapshot would.
-  const contentTypeCounts = Array.from(
-    guides.reduce((map, g) => {
-      const tag = g.tag
-      if (!tag) return map
-      map.set(tag, (map.get(tag) ?? 0) + 1)
-      return map
-    }, new Map<string, number>())
-  ).sort((a, b) => b[1] - a[1]).slice(0, 3)
-
-  // Most Popular — top-liked guides, reusing the same likeCount data that
-  // already powers the "Popular" sort mode, not a new tracking mechanism.
-  const mostPopularGuides = [...guides]
-    .filter(g => (g.likeCount ?? 0) > 0)
-    .sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0))
-    .slice(0, 6)
-
   const hasActiveFilter = !!filterSection || !!filterTag || !!filterLevel || !!filterTopic || !!filterOverlay || searchQuery.trim().length > 0
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -525,39 +506,12 @@ export default function PublicHub() {
           </div>
         </div>
         <p className="header-desc">{currentSubtitle}</p>
-        {!loading && guides.length > 0 && (
-          <div className="hero-stats-row">
-            <div className="hero-stats-bar">
-              <div className="hero-stat">
-                <span className="hero-stat-num">{guides.length}</span>
-                <span className="hero-stat-label">{lang === 'fr' ? 'Guides' : 'Guides'}</span>
-              </div>
-              {contentTypeCounts.map(([tag, count]) => {
-                const g = guides.find(g => g.tag === tag)
-                const tagLabel = lang === 'fr' ? (g?.tag_fr || tag) : tag
-                return (
-                  <div className="hero-stat" key={tag}>
-                    <span className="hero-stat-num">{count}</span>
-                    <span className="hero-stat-label">{tagLabel}</span>
-                  </div>
-                )
-              })}
-            </div>
-            <a
-              className="hero-install-btn"
-              href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md"
-              target="_blank" rel="noopener noreferrer"
-            >
-              ⚡ {lang === 'fr' ? "Installer comme compétence d'agent" : 'Install as Agent Skill'} ↗
-            </a>
-          </div>
-        )}
       </header>
 
       {filterTopic && (
         <div style={{ padding: '10px 22px', borderBottom: '1px solid var(--line)', background: 'var(--cream-deep)' }}>
           <Breadcrumbs items={[
-            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: '/' },
+            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: '/hub' },
             { label: lang === 'fr' ? (TOPICS.find(t => t.en === filterTopic)?.fr ?? filterTopic) : filterTopic },
           ]} />
         </div>
@@ -584,33 +538,6 @@ export default function PublicHub() {
               navigate(`/guide/${id}?lang=${lang}`)
             }}
           />
-        </div>
-      )}
-
-      {!loading && mostPopularGuides.length > 0 && (
-        <div className="most-popular-section">
-          <div className="pinned-header">
-            <span className="pinned-header-label">
-              <span className="pinned-pin">🔥</span>
-              {lang === 'fr' ? 'Les plus populaires' : 'Most Popular'}
-            </span>
-          </div>
-          <div className="reader-grid">
-            {mostPopularGuides.map(guide => (
-              <GuideCard
-                key={guide.id}
-                guide={guide}
-                lang={lang}
-                liked={library.get(guide.id)?.liked ?? false}
-                saved={library.get(guide.id)?.saved ?? false}
-                isAdmin={effectiveIsAdmin}
-                onOpen={() => navigate(`/guide/${guide.id}?lang=${lang}`)}
-                onToggleLike={() => handleToggleLike(guide.id)}
-                onToggleSave={() => handleToggleSave(guide.id)}
-                onQuickTagSave={update => saveQuickTags(guide.id, update)}
-              />
-            ))}
-          </div>
         </div>
       )}
 
@@ -675,7 +602,7 @@ export default function PublicHub() {
                         onClick={() => {
                           const next = filterTopic === t.en ? null : t.en
                           setFilterTopic(next)
-                          navigate(next ? `/category/${topicSlug(t.en)}?lang=${lang}` : '/')
+                          navigate(next ? `/category/${topicSlug(t.en)}?lang=${lang}` : '/hub')
                         }}
                       >
                         {lang === 'fr' ? t.fr : t.en}
