@@ -541,46 +541,6 @@ export default function PublicHub() {
         </div>
       )}
 
-      {!loading && topicCounts.length > 0 && (
-        <div className="topic-browse-section">
-          <div className="pinned-header">
-            <span className="pinned-header-label">
-              <span className="pinned-pin">🧭</span>
-              {lang === 'fr' ? 'Parcourir par sujet' : 'Browse by Topic'}
-            </span>
-          </div>
-          <div className="topic-browse-row">
-            {topicCounts.map(t => (
-              <button
-                key={t.en}
-                className="topic-chip"
-                onClick={() => {
-                  setFilterTopic(t.en)
-                  navigate(`/category/${topicSlug(t.en)}?lang=${lang}`)
-                }}
-              >
-                <span className="topic-chip-label">{lang === 'fr' ? t.fr : t.en}</span>
-                <span className="topic-chip-count">{t.count}</span>
-              </button>
-            ))}
-          </div>
-          {overlayCounts.length > 0 && (
-            <div className="topic-browse-row overlay-row">
-              {overlayCounts.map(o => (
-                <button
-                  key={o.en}
-                  className="overlay-chip"
-                  onClick={() => { setFilterOverlay(o.en); setShowFilters(true) }}
-                >
-                  <span className="topic-chip-label">{lang === 'fr' ? o.fr : o.en}</span>
-                  <span className="topic-chip-count">{o.count}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {!loading && guides.length > 0 && (
         <div className="hub-toolbar-wrap">
           <div className="hub-toolbar">
@@ -903,6 +863,46 @@ export default function PublicHub() {
               </div>
             )
           })
+        )}
+
+        {!loading && topicCounts.length > 0 && (
+          <div className="topic-browse-section">
+            <div className="pinned-header">
+              <span className="pinned-header-label">
+                <span className="pinned-pin">🧭</span>
+                {lang === 'fr' ? 'Parcourir par sujet' : 'Browse by Topic'}
+              </span>
+            </div>
+            <div className="topic-browse-row">
+              {topicCounts.map(t => (
+                <button
+                  key={t.en}
+                  className="topic-chip"
+                  onClick={() => {
+                    setFilterTopic(t.en)
+                    navigate(`/category/${topicSlug(t.en)}?lang=${lang}`)
+                  }}
+                >
+                  <span className="topic-chip-label">{lang === 'fr' ? t.fr : t.en}</span>
+                  <span className="topic-chip-count">{t.count}</span>
+                </button>
+              ))}
+            </div>
+            {overlayCounts.length > 0 && (
+              <div className="topic-browse-row overlay-row">
+                {overlayCounts.map(o => (
+                  <button
+                    key={o.en}
+                    className="overlay-chip"
+                    onClick={() => { setFilterOverlay(o.en); setShowFilters(true) }}
+                  >
+                    <span className="topic-chip-label">{lang === 'fr' ? o.fr : o.en}</span>
+                    <span className="topic-chip-count">{o.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </main>
       </div>

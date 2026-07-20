@@ -201,6 +201,30 @@
       var head = docObj.querySelector('head') || docObj.documentElement;
       head.insertBefore(scriptEl, head.firstChild);
 
+      // Many guides embed their own "Copy" buttons calling
+      // navigator.clipboard.writeText — often with no .catch(), so a denied
+      // clipboard permission makes the button silently do nothing. Wrap it
+      // with a hidden-textarea/execCommand fallback so it always works.
+      var clipboardScriptEl = docObj.createElement('script');
+      clipboardScriptEl.type = 'text/javascript';
+      clipboardScriptEl.textContent = '(function(){function fallbackCopy(text){var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.left="-9999px";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);}var nativeWrite=(navigator.clipboard&&navigator.clipboard.writeText)?navigator.clipboard.writeText.bind(navigator.clipboard):null;if(!navigator.clipboard){navigator.clipboard={};}navigator.clipboard.writeText=function(text){if(nativeWrite){return nativeWrite(text).catch(function(){fallbackCopy(text);});}fallbackCopy(text);return Promise.resolve();};})();';
+      head.insertBefore(clipboardScriptEl, head.firstChild);
+
+      // Most guides embed their own "Save & Export" button in a top-of-page
+      // chrome bar — redundant now that the app's own outer header
+      // (GuideViewer.tsx) has an equivalent button. Hiding the WHOLE bar
+      // seemed like the fix, but testing found some guides put genuinely
+      // unique actions in there too (e.g. a "Copy All Frameworks" button) —
+      // blanket-hiding the bar silently broke those. So this only removes
+      // the specific button(s) that duplicate window.print()/export, by
+      // text + how they trigger it (inline onclick containing "print", or
+      // an id like "printBtn" wired via addEventListener) — everything else
+      // in a guide's own topbar (brand text, other custom actions) stays.
+      var hideExportBtnScriptEl = docObj.createElement('script');
+      hideExportBtnScriptEl.type = 'text/javascript';
+      hideExportBtnScriptEl.textContent = '(function(){function isExportBtn(el){var text=(el.textContent||"").toLowerCase();var onclick=(el.getAttribute("onclick")||"").toLowerCase();var id=(el.id||"").toLowerCase();var looksLikeExport=/save\\s*&?\\s*export|export\\s*(as\\s*)?pdf/.test(text);var triggersPrint=onclick.indexOf("print")!==-1||id.indexOf("print")!==-1;return looksLikeExport&&triggersPrint;}function run(){document.querySelectorAll(".topbar button, .topbar a").forEach(function(el){if(isExportBtn(el))el.style.display="none";});}if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",run);}else{run();}})();';
+      head.insertBefore(hideExportBtnScriptEl, head.firstChild);
+
       // Tap-to-reveal glossary popover: works for both touch and mouse via
       // plain "click" (no hover-only interaction, so it also works on
       // mobile). Only .glossary-term spans (added by protectGlossaryNodes

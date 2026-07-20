@@ -445,6 +445,14 @@ export default function GuideViewer() {
           <button className={`lang-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => changeLang('en')}>EN</button>
           <button className={`lang-btn ${lang === 'fr' ? 'active' : ''}`} onClick={() => changeLang('fr')}>FR</button>
         </div>
+        <button
+          className="btn btn-secondary btn-sm"
+          style={{ flexShrink: 0 }}
+          onClick={handleExportTrigger}
+          title={lang === 'fr' ? 'Enregistrer et exporter en PDF' : 'Save and export as PDF'}
+        >
+          💾 {lang === 'fr' ? 'Exporter' : 'Save & Export'}
+        </button>
         {guide?.htmlContent && !ttsOpen && (
           <button
             className="btn btn-secondary btn-sm tts-listen-btn"
@@ -484,11 +492,15 @@ export default function GuideViewer() {
         )}
       </div>
 
-      {/* Full-page iframe renders the guide HTML exactly as authored */}
+      {/* Full-page iframe renders the guide HTML exactly as authored.
+          allow="clipboard-write" — many guides embed their own "Copy" buttons
+          (navigator.clipboard.writeText) for templates/snippets; without this
+          the permission is silently denied and the button appears to do nothing. */}
       <iframe
         ref={iframeRef}
         src={`/raw-guide.html?id=${id}&lang=${lang}`}
         title={currentTitle}
+        allow="clipboard-write"
         style={{ flex: 1, width: '100%', border: 'none' }}
         onLoad={() => setIframeLoaded(true)}
       />

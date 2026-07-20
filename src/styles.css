@@ -205,16 +205,10 @@ input, textarea { font-family: inherit; }
 /* ─── TOPIC/OVERLAY BROWSE SHOWCASE ─── */
 .topic-browse-section { margin-bottom: 40px; }
 .topic-browse-row {
-  display: flex; gap: 10px; overflow-x: auto; padding: 4px 16px 10px; margin: 0 -16px;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
+  display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 0 10px;
 }
-.topic-browse-row::-webkit-scrollbar { height: 6px; }
-.topic-browse-row::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 99px; }
 .topic-browse-row.overlay-row { margin-top: -4px; }
 .topic-chip, .overlay-chip {
-  flex-shrink: 0;
-  scroll-snap-align: start;
   display: flex; align-items: center; gap: 9px;
   background: var(--paper);
   border: 1.5px solid var(--line);
