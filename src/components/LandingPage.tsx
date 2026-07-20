@@ -152,12 +152,7 @@ export default function LandingPage() {
           <a href="#most-discussed" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
             {lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}
           </a>
-          <a
-            className="btn btn-secondary btn-sm"
-            href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md"
-            target="_blank" rel="noopener noreferrer"
-            style={{ textDecoration: 'none' }}
-          >
+          <a href="#download" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
             {lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}
           </a>
           {currentUser ? (
@@ -403,9 +398,7 @@ export default function LandingPage() {
           <Link to="/hub">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</Link>
           <Link to="/paths">{lang === 'fr' ? 'Parcours' : 'Learning Paths'}</Link>
           <a href="#most-discussed">{lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}</a>
-          <a href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md" target="_blank" rel="noopener noreferrer">
-            {lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}
-          </a>
+          <a href="#download">{lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}</a>
           <a href="#top">{lang === 'fr' ? 'Haut de page ↑' : 'Back to top ↑'}</a>
         </div>
       </footer>
