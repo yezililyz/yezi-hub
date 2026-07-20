@@ -183,6 +183,7 @@ input, textarea { font-family: inherit; }
   .landing-stat-box:last-child { border-bottom: none; }
 }
 
+.landing-usecase-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
 .landing-popular-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px;
 }
@@ -430,6 +431,8 @@ input, textarea { font-family: inherit; }
   background: var(--orange-soft); color: var(--orange-deep);
   border-radius: 99px; padding: 2px 9px; flex-shrink: 0;
 }
+.topic-chip.active { background: var(--ink); border-color: var(--ink); color: var(--cream); }
+.topic-chip.active .topic-chip-count { background: var(--orange); color: var(--ink); }
 
 /* ─── GUIDE GRID ─── */
 .guide-grid {

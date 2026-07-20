@@ -12,8 +12,44 @@ interface Guide {
   id: string; title: string; title_fr?: string
   description: string; description_fr?: string
   tag: string; tag_fr?: string
+  topics?: string[]; topics_fr?: string[]
   published: boolean; sectionId?: string | null
   likeCount?: number
+}
+
+// Same 9-value Topic taxonomy defined in AdminHub.tsx — already 100%
+// populated across every published guide, reused here as the underlying
+// data for the "browse by use case" grid below (see USE_CASE_LABELS).
+const TOPICS: { en: string; fr: string }[] = [
+  { en: 'Growth & Retention', fr: 'Croissance et rétention' },
+  { en: 'Strategy & Positioning', fr: 'Stratégie et positionnement' },
+  { en: 'Team & Organization', fr: 'Équipe et organisation' },
+  { en: 'Building & Shipping', fr: 'Conception et livraison' },
+  { en: 'Operating Cadence & Communication', fr: 'Cadence opérationnelle et communication' },
+  { en: 'Discovery & Research', fr: 'Découverte et recherche' },
+  { en: 'Launch & Go-to-Market', fr: 'Lancement et mise sur le marché' },
+  { en: 'Planning & Prioritization', fr: 'Planification et priorisation' },
+  { en: 'Career', fr: 'Carrière' },
+]
+
+// Friendlier, action-oriented display labels for the same topics, used only
+// in the "browse by use case" section — no new data field, just a relabel.
+const USE_CASE_LABELS: Record<string, { en: string; fr: string }> = {
+  'Building & Shipping': { en: 'Build & Ship the Product', fr: 'Construire et livrer le produit' },
+  'Growth & Retention': { en: 'Grow & Retain Users', fr: 'Développer et fidéliser les utilisateurs' },
+  'Strategy & Positioning': { en: 'Set Strategy & Position', fr: 'Définir la stratégie et le positionnement' },
+  'Discovery & Research': { en: 'Discover & Understand Users', fr: 'Découvrir et comprendre les utilisateurs' },
+  'Planning & Prioritization': { en: 'Plan & Prioritize the Roadmap', fr: 'Planifier et prioriser la feuille de route' },
+  'Launch & Go-to-Market': { en: 'Launch & Go to Market', fr: 'Lancer et aller sur le marché' },
+  'Team & Organization': { en: 'Lead Your Team', fr: 'Diriger votre équipe' },
+  'Operating Cadence & Communication': { en: 'Run Your Operating Rhythm', fr: 'Rythmer vos opérations' },
+  'Career': { en: 'Grow Your Career', fr: 'Faire évoluer votre carrière' },
+}
+
+const USE_CASE_GRID_CAP = 9
+
+function topicSlug(en: string): string {
+  return en.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
 interface SiteMeta {
@@ -34,6 +70,7 @@ export default function LandingPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ kind: 'save'; guideId: string } | null>(null)
+  const [activeUseCase, setActiveUseCase] = useState<string>('All')
   const [lang, setLang] = useState<'en' | 'fr'>(() => {
     const saved = localStorage.getItem('yezi-hub-lang')
     return (saved === 'fr' || saved === 'en') ? saved : 'en'
@@ -134,9 +171,34 @@ export default function LandingPage() {
   const heroPool = mostPopularGuides.length > 0 ? mostPopularGuides : guides
   const heroFeatured = heroPool[0]
   const heroMini = heroPool.slice(1, 3)
-  const heroShownIds = new Set([heroFeatured?.id, ...heroMini.map(g => g.id)].filter(Boolean))
-  // Don't repeat a guide already teased in the hero card further down the page.
-  const belowFoldPopular = mostPopularGuides.filter(g => !heroShownIds.has(g.id))
+
+  // "Browse by use case" grid — reuses the existing Topic taxonomy (see
+  // TOPICS/USE_CASE_LABELS above) plus content-type for the Teardowns chip.
+  // Unlike the old likes-based section, this can legitimately repeat a guide
+  // already shown in the hero card — it's a browse-by-need tool now, not a
+  // second "most popular" list.
+  const topicCounts = new Map<string, number>()
+  guides.forEach(g => g.topics?.forEach(t => topicCounts.set(t, (topicCounts.get(t) ?? 0) + 1)))
+  const teardownGuides = guides.filter(g => g.tag === 'Case Study/Teardown')
+
+  let useCaseGridGuides: Guide[]
+  let useCaseOverflowCount = 0
+  let useCaseOverflowHref: string | null = null
+
+  if (activeUseCase === 'All') {
+    useCaseGridGuides = TOPICS
+      .map(t => guides.find(g => g.topics?.includes(t.en)))
+      .filter((g): g is Guide => !!g)
+  } else if (activeUseCase === 'Teardowns') {
+    useCaseGridGuides = teardownGuides.slice(0, USE_CASE_GRID_CAP)
+    useCaseOverflowCount = Math.max(0, teardownGuides.length - USE_CASE_GRID_CAP)
+    useCaseOverflowHref = `/hub?lang=${lang}`
+  } else {
+    const matches = guides.filter(g => g.topics?.includes(activeUseCase))
+    useCaseGridGuides = matches.slice(0, USE_CASE_GRID_CAP)
+    useCaseOverflowCount = Math.max(0, matches.length - USE_CASE_GRID_CAP)
+    useCaseOverflowHref = `/category/${topicSlug(activeUseCase)}?lang=${lang}`
+  }
 
   return (
     <div className="landing-page" id="top">
@@ -308,23 +370,61 @@ export default function LandingPage() {
         </button>
       </section>
 
-      {!loading && belowFoldPopular.length > 0 && (
+      {!loading && guides.length > 0 && (
         <section className="landing-section" id="most-discussed">
           <div className="landing-library-head">
             <div>
-              <p className="landing-kicker">{lang === 'fr' ? 'Commencez par le travail' : 'Start with the work'}</p>
+              <p className="landing-kicker">{lang === 'fr' ? 'Parcourez par besoin' : "Browse by what you're doing"}</p>
               <h2 className="landing-section-headline">
-                {lang === 'fr' ? 'Les compétences produit les plus discutées.' : 'Most Discussed Product Skills.'}
+                {lang === 'fr' ? 'Trouvez le guide pour la tâche.' : 'Find the Guide for the Job.'}
               </h2>
             </div>
             <p className="landing-library-desc">
               {lang === 'fr'
-                ? "Partez des problèmes que les équipes produit résolvent activement — pas de théorie générique."
-                : 'Start with the problems product teams are actively solving — not generic theory.'}
+                ? 'Filtrez par le problème qui vous occupe — pas par popularité.'
+                : 'Filter by the problem in front of you, not by popularity.'}
             </p>
           </div>
+
+          <div className="landing-usecase-chips">
+            <button
+              type="button"
+              className={`topic-chip ${activeUseCase === 'All' ? 'active' : ''}`}
+              onClick={() => setActiveUseCase('All')}
+            >
+              <span className="topic-chip-label">{lang === 'fr' ? 'Tout' : 'All'}</span>
+              <span className="topic-chip-count">{guides.length}</span>
+            </button>
+            {TOPICS.map(t => {
+              const count = topicCounts.get(t.en) ?? 0
+              if (count === 0) return null
+              const label = lang === 'fr' ? USE_CASE_LABELS[t.en].fr : USE_CASE_LABELS[t.en].en
+              return (
+                <button
+                  key={t.en}
+                  type="button"
+                  className={`topic-chip ${activeUseCase === t.en ? 'active' : ''}`}
+                  onClick={() => setActiveUseCase(t.en)}
+                >
+                  <span className="topic-chip-label">{label}</span>
+                  <span className="topic-chip-count">{count}</span>
+                </button>
+              )
+            })}
+            {teardownGuides.length > 0 && (
+              <button
+                type="button"
+                className={`topic-chip ${activeUseCase === 'Teardowns' ? 'active' : ''}`}
+                onClick={() => setActiveUseCase('Teardowns')}
+              >
+                <span className="topic-chip-label">{lang === 'fr' ? 'Études de cas réelles' : 'Real Teardowns'}</span>
+                <span className="topic-chip-count">{teardownGuides.length}</span>
+              </button>
+            )}
+          </div>
+
           <div className="landing-popular-grid">
-            {belowFoldPopular.map(guide => {
+            {useCaseGridGuides.map(guide => {
               const title = lang === 'fr' && guide.title_fr ? guide.title_fr : guide.title
               const desc = lang === 'fr' && guide.description_fr ? guide.description_fr : guide.description
               const tagLabel = lang === 'fr' && guide.tag_fr ? guide.tag_fr : guide.tag
@@ -358,6 +458,14 @@ export default function LandingPage() {
               )
             })}
           </div>
+
+          {useCaseOverflowCount > 0 && useCaseOverflowHref && (
+            <Link to={useCaseOverflowHref} className="btn btn-secondary" style={{ marginTop: 18 }}>
+              {lang === 'fr'
+                ? `Voir tout (${useCaseOverflowCount} de plus) →`
+                : `See all (${useCaseOverflowCount} more) →`}
+            </Link>
+          )}
         </section>
       )}
 
