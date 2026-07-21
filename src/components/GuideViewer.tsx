@@ -407,7 +407,7 @@ export default function GuideViewer() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--cream)' }}>
       <div style={{ fontSize: 48 }}>📭</div>
       <p style={{ color: 'var(--muted)', fontSize: 16 }}>{lang === 'fr' ? 'Guide introuvable.' : 'Guide not found.'}</p>
-      <button className="btn btn-secondary" onClick={() => navigate('/hub')}>
+      <button className="btn btn-secondary" onClick={() => navigate('/')}>
         {lang === 'fr' ? '← Retour à l\'accueil' : '← Back to hub'}
       </button>
     </div>
@@ -428,12 +428,12 @@ export default function GuideViewer() {
         padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
         flexShrink: 0, zIndex: 10
       }}>
-        <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/hub?lang=${lang}`)}>
+        <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/?lang=${lang}`)}>
           {lang === 'fr' ? '← Accueil' : '← Hub'}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Breadcrumbs items={[
-            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: `/hub?lang=${lang}` },
+            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: `/?lang=${lang}` },
             ...(primaryTopic ? [{ label: primaryTopicLabel!, to: `/category/${topicSlug(primaryTopic)}?lang=${lang}` }] : []),
           ]} />
           <div style={{ fontFamily: '"Archivo",sans-serif', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 2, overflow: 'hidden' }}>

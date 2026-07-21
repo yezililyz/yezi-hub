@@ -88,7 +88,7 @@ export default function LearningPaths() {
               <p>{lang === 'fr' ? 'Programmes de lecture guidés' : 'Guided reading programs'}</p>
             </div>
           </div>
-          <Link to={`/hub?lang=${lang}`} className="btn btn-secondary btn-sm">
+          <Link to={`/?lang=${lang}`} className="btn btn-secondary btn-sm">
             {lang === 'fr' ? '← Accueil' : '← Hub'}
           </Link>
         </div>

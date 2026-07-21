@@ -511,7 +511,7 @@ export default function PublicHub() {
       {filterTopic && (
         <div style={{ padding: '10px 22px', borderBottom: '1px solid var(--line)', background: 'var(--cream-deep)' }}>
           <Breadcrumbs items={[
-            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: '/hub' },
+            { label: lang === 'fr' ? 'Accueil' : 'Hub', to: '/' },
             { label: lang === 'fr' ? (TOPICS.find(t => t.en === filterTopic)?.fr ?? filterTopic) : filterTopic },
           ]} />
         </div>
@@ -602,7 +602,7 @@ export default function PublicHub() {
                         onClick={() => {
                           const next = filterTopic === t.en ? null : t.en
                           setFilterTopic(next)
-                          navigate(next ? `/category/${topicSlug(t.en)}?lang=${lang}` : '/hub')
+                          navigate(next ? `/category/${topicSlug(t.en)}?lang=${lang}` : '/')
                         }}
                       >
                         {lang === 'fr' ? t.fr : t.en}

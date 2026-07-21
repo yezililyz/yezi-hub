@@ -60,7 +60,7 @@ export default function LoginPage() {
   return (
     <div className="login-page-wrap">
       <div className="login-page-card">
-        <Link to="/hub" className="login-page-back">← {lang === 'fr' ? 'Retour au hub' : 'Back to hub'}</Link>
+        <Link to="/" className="login-page-back">← {lang === 'fr' ? 'Retour au hub' : 'Back to hub'}</Link>
 
         {currentUser ? (
           <div style={{ textAlign: 'center' }}>
@@ -70,7 +70,7 @@ export default function LoginPage() {
             {currentUser.email !== ADMIN_EMAIL && (
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link to="/library" className="btn btn-primary">{lang === 'fr' ? 'Ma bibliothèque' : 'My Library'}</Link>
-                <Link to="/hub" className="btn btn-secondary">{lang === 'fr' ? 'Parcourir les guides' : 'Browse guides'}</Link>
+                <Link to="/" className="btn btn-secondary">{lang === 'fr' ? 'Parcourir les guides' : 'Browse guides'}</Link>
                 <button className="btn btn-secondary" onClick={() => signOut(auth)}>
                   {lang === 'fr' ? 'Déconnexion' : 'Sign out'}
                 </button>

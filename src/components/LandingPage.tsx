@@ -192,7 +192,7 @@ export default function LandingPage() {
   } else if (activeUseCase === 'Teardowns') {
     useCaseGridGuides = teardownGuides.slice(0, USE_CASE_GRID_CAP)
     useCaseOverflowCount = Math.max(0, teardownGuides.length - USE_CASE_GRID_CAP)
-    useCaseOverflowHref = `/hub?lang=${lang}`
+    useCaseOverflowHref = `/?lang=${lang}`
   } else {
     const matches = guides.filter(g => g.topics?.includes(activeUseCase))
     useCaseGridGuides = matches.slice(0, USE_CASE_GRID_CAP)
@@ -203,12 +203,12 @@ export default function LandingPage() {
   return (
     <div className="landing-page" id="top">
       <nav className="landing-nav">
-        <Link to="/" className="brand" style={{ textDecoration: 'none' }}>
+        <Link to="/landing" className="brand" style={{ textDecoration: 'none' }}>
           <div className="brand-icon">✦</div>
           <div className="brand-text"><h1>{currentTitle}</h1></div>
         </Link>
         <div className="landing-nav-links">
-          <Link to="/hub" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+          <Link to="/" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
             {lang === 'fr' ? 'Bibliothèque' : 'Library'}
           </Link>
           <a href="#most-discussed" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
@@ -286,7 +286,7 @@ export default function LandingPage() {
               >
                 {lang === 'fr' ? "Installer comme compétence d'agent" : 'Install as Agent Skill'} ↗
               </a>
-              <button className="btn btn-secondary" onClick={() => navigate('/hub')}>
+              <button className="btn btn-secondary" onClick={() => navigate('/')}>
                 {lang === 'fr' ? 'Parcourir la bibliothèque →' : 'Browse the Hub →'}
               </button>
             </div>
@@ -365,7 +365,7 @@ export default function LandingPage() {
           </div>
         )}
 
-        <button className="btn btn-secondary" onClick={() => navigate('/hub')}>
+        <button className="btn btn-secondary" onClick={() => navigate('/')}>
           {lang === 'fr' ? 'Parcourir toute la bibliothèque →' : 'Browse the full hub →'}
         </button>
       </section>
@@ -503,7 +503,7 @@ export default function LandingPage() {
           <div className="brand-text"><h1>{currentTitle}</h1><p>{currentTagline}</p></div>
         </div>
         <div className="landing-footer-links">
-          <Link to="/hub">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</Link>
+          <Link to="/">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</Link>
           <Link to="/paths">{lang === 'fr' ? 'Parcours' : 'Learning Paths'}</Link>
           <a href="#most-discussed">{lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}</a>
           <a href="#download">{lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}</a>
