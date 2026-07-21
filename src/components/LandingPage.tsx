@@ -281,7 +281,7 @@ export default function LandingPage() {
             <div className="landing-hero-ctas">
               <a
                 className="btn btn-primary"
-                href="https://github.com/yezililyz/yezi-hub-mcp/blob/main/CONNECTING.md"
+                href="https://github.com/yezililyz/product-fieldwork-skills"
                 target="_blank" rel="noopener noreferrer"
               >
                 {lang === 'fr' ? "Installer comme compétence d'agent" : 'Install as Agent Skill'} ↗
