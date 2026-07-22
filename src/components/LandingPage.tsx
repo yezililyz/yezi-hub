@@ -214,7 +214,7 @@ export default function LandingPage() {
           <a href="#most-discussed" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
             {lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}
           </a>
-          <a href="#download" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+          <a href="#agent-skill" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
             {lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}
           </a>
           {currentUser ? (
@@ -278,7 +278,7 @@ export default function LandingPage() {
                 : 'Sign in with a magic link — no password. Unsubscribe anytime.'}
             </p>
 
-            <div className="landing-hero-ctas">
+            <div className="landing-hero-ctas" id="agent-skill">
               <a
                 className="btn btn-primary"
                 href="https://github.com/yezililyz/product-fieldwork-skills"
@@ -506,7 +506,7 @@ export default function LandingPage() {
           <Link to="/">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</Link>
           <Link to="/paths">{lang === 'fr' ? 'Parcours' : 'Learning Paths'}</Link>
           <a href="#most-discussed">{lang === 'fr' ? 'Les plus discutés' : 'Most Discussed'}</a>
-          <a href="#download">{lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}</a>
+          <a href="#agent-skill">{lang === 'fr' ? "Compétences d'agent" : 'Agent Skills'}</a>
           <a href="#top">{lang === 'fr' ? 'Haut de page ↑' : 'Back to top ↑'}</a>
         </div>
       </footer>
