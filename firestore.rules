@@ -9,9 +9,17 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email == 'yezi.lilyz@gmail.com';
     }
 
-    // Guides: public can read published; admin can read everything (drafts/private too).
+    // Guides: public can read published-and-not-private; admin can read everything (drafts/private too).
     match /guides/{guideId} {
-      allow read: if resource.data.published == true || isAdmin();
+      // published alone isn't enough: the admin UI stores visibility/private
+      // as a separate pair of fields, and only updateVisibility() keeps them
+      // in sync with published today — a future write path (script, manual
+      // console edit) that sets visibility:'private' without also flipping
+      // published:false must not leave the doc world-readable.
+      allow read: if (resource.data.published == true
+          && resource.data.visibility != 'private'
+          && resource.data.private != true)
+        || isAdmin();
       // Any signed-in reader may toggle ONLY likeCount on a guide — nothing else.
       allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount']);
